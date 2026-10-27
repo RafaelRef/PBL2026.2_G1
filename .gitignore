@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.DS_Store
+.vscode/
+
+# figura orfa do modelo anterior, mantida localmente so por historico
+/windkessel_rc_adulto_vs_neonato.png
