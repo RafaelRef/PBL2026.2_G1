@@ -9,6 +9,10 @@ sangue inteiro); ele so cai algumas horas depois, quando o volume volta como
 plasma e dilui as hemacias que foram embora.
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # simuladores/
+
 import numpy as np
 import matplotlib.pyplot as plt
 

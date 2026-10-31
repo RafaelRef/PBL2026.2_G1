@@ -15,6 +15,7 @@ PASTA = Path(__file__).resolve().parent              # simuladores/
 RAIZ = PASTA.parent                                  # raiz do repositorio
 FIGURAS = RAIZ / "figuras" / "simuladores"
 FIGURAS_RELATORIO = RAIZ / "figuras" / "relatorio_parcial"
+PROXIMOS_PASSOS = PASTA / "proximos_passos"            # analises para o relatorio final
 
 
 def importar(nome):
@@ -22,12 +23,15 @@ def importar(nome):
 
     `import 01_windkessel_base` e' sintaxe invalida em Python -- nome de
     modulo nao pode comecar com digito -- entao carregamos pelo caminho do
-    arquivo. O codigo de cada arquivo fica atras de `if __name__ ==
+    arquivo, procurando em simuladores/ e em simuladores/proximos_passos/.
+    O codigo de cada arquivo fica atras de `if __name__ ==
     "__main__"`, logo importar nao dispara figura nenhuma.
     """
     if nome in sys.modules:
         return sys.modules[nome]
     caminho = PASTA / f"{nome}.py"
+    if not caminho.exists():                      # ex.: 06_recomendacao
+        caminho = PROXIMOS_PASSOS / f"{nome}.py"
     spec = importlib.util.spec_from_file_location(nome, caminho)
     modulo = importlib.util.module_from_spec(spec)
     sys.modules[nome] = modulo
