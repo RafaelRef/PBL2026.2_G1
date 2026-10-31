@@ -2,7 +2,7 @@
 
 Duas coisas so:
   importar(nome)  -> carrega um arquivo "0X_...py" como modulo
-  salvar(fig, n)  -> grava a figura em figuras/ e avisa no terminal
+  salvar(fig, n)  -> grava a figura em figuras/simuladores/ e avisa no terminal
 """
 
 import importlib.util
@@ -11,8 +11,10 @@ from pathlib import Path
 
 import parametros as P
 
-PASTA = Path(__file__).resolve().parent
-FIGURAS = PASTA / "figuras"
+PASTA = Path(__file__).resolve().parent              # simuladores/
+RAIZ = PASTA.parent                                  # raiz do repositorio
+FIGURAS = RAIZ / "figuras" / "simuladores"
+FIGURAS_RELATORIO = RAIZ / "figuras" / "relatorio_parcial"
 
 
 def importar(nome):
@@ -34,9 +36,9 @@ def importar(nome):
 
 
 def salvar(fig, nome):
-    """Grava a figura em figuras/<nome> e devolve o caminho."""
-    FIGURAS.mkdir(exist_ok=True)
+    """Grava a figura em figuras/simuladores/<nome> e devolve o caminho."""
+    FIGURAS.mkdir(parents=True, exist_ok=True)
     caminho = FIGURAS / nome
     fig.savefig(caminho, dpi=P.DPI, bbox_inches="tight")
-    print(f"\nfigura salva em figuras/{nome}")
+    print(f"\nfigura salva em figuras/simuladores/{nome}")
     return caminho

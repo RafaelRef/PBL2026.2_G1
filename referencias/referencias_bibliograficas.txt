@@ -1,0 +1,71 @@
+REFERÊNCIAS BIBLIOGRÁFICAS — PBL 2026.2, GRUPO 1 (UTI NEONATAL)
+Formato ABNT. A numeração segue a do relatório parcial.
+Itens marcados com [CONFERIR] ainda precisam de verificação na fonte original.
+
+==============================================================================
+1. REFERÊNCIAS DO RELATÓRIO PARCIAL
+==============================================================================
+
+[1] COSTA, Roberta; PADILHA, Maria Itayra. A Unidade de Terapia Intensiva Neonatal possibilitando novas práticas no cuidado ao recém-nascido. Revista Gaúcha de Enfermagem, v. 32, n. 2, p. 248–255, 1 jun. 2011.
+
+[2] JUNG, Nayoung et al. Changes to Blood-Sampling Protocol to Reduce the Sampling Amount in Neonatal Intensive Care Units: A Quality Improvement Project. Journal of Clinical Medicine, v. 12, n. 17, p. 5712, 1 set. 2023.
+
+[3] COUNSILMAN, Clare E. et al. Iatrogenic blood loss in extreme preterm infants due to frequent laboratory tests and procedures. The Journal of Maternal-Fetal & Neonatal Medicine, v. 34, n. 16, p. 2660–2665, 6 out. 2019.
+
+[4] DE SOUZA, Luiz Alexandre Menezes; DEL PIERO, Alexandra Boutros Chamoun. Anemia Iatrogênica em Neonatos: Impacto das Coletas Sanguíneas Excessivas em Unidade de Terapia Intensiva. [S.d.]. Disponível em: <https://unisales.br/wp-content/uploads/2026/06/ANEMIA-LATROGENICA-EM-NEONATOS-IMPACTOR-DAS-COLETAS-SANGUINEAS-EXCESSIVAS.pdf>. Acesso em: 26 out. 2026.
+
+[5] ABOALQEZ, Ahmed et al. Iatrogenic Blood Loss in Very Low Birth Weight Infants and Transfusion of Packed Red Blood Cells in a Tertiary Care Neonatal Intensive Care Unit. Children, v. 8, n. 10, p. 847, 25 set. 2021.
+
+[6] IATROGENIC anemia: a downside of blood testing. Disponível em: <https://acutecaretesting.org/en/articles/iatrogenic-anemia--a-downside-of-blood-testing>. Acesso em: 26 out. 2026.
+
+[7] BASAVARAJEGOWDA, Abhishekh; PLAKKAL, Nishad. Transfusion reactions in neonates and pediatrics: How and why are they different? Asian Journal of Transfusion Science, v. 17, n. 1, p. 97, 1 jan. 2023.
+
+[8] BRUSS, Zachary S.; RAJA, Avais. Physiology, stroke volume. StatPearls, 2022. Disponível em: <https://www.ncbi.nlm.nih.gov/books/NBK547686/>. Acesso em: 27 out. 2026.
+
+[9] METIVIER, Fabien et al. Pathophysiology of anaemia: focus on the heart and blood vessels. Nephrology Dialysis Transplantation, v. 15, supl. 3, p. 14–18, 2000.
+
+[10] SHI, Yubing; LAWFORD, Patricia; HOSE, Rodney. Review of Zero-D and 1-D Models of Blood Flow in the Cardiovascular System. BioMedical Engineering OnLine, v. 10, n. 1, 26 abr. 2011.
+
+[11] HOUBEN, Nina A. M. et al. Blood loss due to diagnostic testing in extremely preterm infants in 22 European countries: a prospective observational study. 2026. [CONFERIR: periódico, volume e páginas]
+
+[12] SANTOS, Amélia Miyashiro Nunes dos et al. Red blood cell transfusions are independently associated with intra-hospital mortality in very low birth weight preterm infants. The Journal of Pediatrics, v. 159, p. 371–376, 2011.
+
+[13] STRAUSS, Ronald G. Anaemia of prematurity: pathophysiology and treatment. Blood Reviews, v. 24, n. 6, p. 221–225, 2010.
+
+[14] ZHANG, Ying. Application of signal processing techniques in the assessment of clinical risks in preterm infants. Tese (Doutorado), 2013. Disponível em: <https://arxiv.org/pdf/1404.5725>. Acesso em: 31 out. 2026. [CONFERIR: ano de defesa]
+
+[15] DESCHMANN, Emöke et al. Clinical practice guideline for red blood cell transfusion thresholds in very preterm neonates. JAMA Network Open, v. 7, n. 6, e2417431, 2024. [CONFERIR: número do artigo]
+
+[16] GRUPO 1 – PBL 2026.2. PBL2026.2_G1: simulador do impacto hemodinâmico das coletas de sangue em prematuros. GitHub, 2026. Disponível em: <https://github.com/RafaelRef/PBL2026.2_G1>. Acesso em: 31 out. 2026.
+
+==============================================================================
+2. LITERATURA DE APOIO AO MODELO (consultada, ainda não citada no relatório)
+==============================================================================
+
+ALADANGADY, N. et al. Is it possible to predict the blood volume of a sick preterm infant? Archives of Disease in Childhood: Fetal and Neonatal Edition, v. 89, n. 4, p. F344–F347, 2004.
+  -> volemia medida em prematuros: 71 ± 12 mL/kg (53 a 105 mL/kg).
+
+BURATTINI, R.; DI SALVIA, P. O. Development of systemic arterial mechanical properties from infancy to adulthood interpreted by four-element windkessel models. Journal of Applied Physiology, 2007. Disponível em: <https://pubmed.ncbi.nlm.nih.gov/17303709>.
+  -> razão tau/T independente do tamanho corporal; base para recalibrar C.
+
+KIRPALANI, Haresh et al. Higher or lower hemoglobin transfusion thresholds for preterm infants. New England Journal of Medicine, v. 383, n. 27, p. 2639–2651, 2020.
+  -> ensaio TOP: limiares de transfusão mais baixos não pioraram desfechos.
+
+KURUVILLA, Dhanya J. et al. Estimation of adult and neonatal RBC lifespans in anemic neonates using RBCs labeled at several discrete biotin densities. Pediatric Research, v. 81, n. 6, p. 905–910, 2017.
+  -> vida média das hemácias neonatais: 54 dias (o código usa 45).
+
+FRANZ, Axel R. et al. Effects of liberal vs restrictive transfusion thresholds on survival and neurocognitive outcomes in extremely low-birth-weight infants: the ETTNO randomized clinical trial. JAMA, v. 324, n. 6, p. 560–570, 2020.
+  -> limiar liberal: Hct >= 28%; restritivo: até 21%.
+
+SÁ COUTO, P. et al. A model for educational simulation of neonatal cardiovascular pathophysiology. Disponível em: <https://pubmed.ncbi.nlm.nih.gov/19088566/>.
+
+SHORTLAND, G. J.; FLEMING, P. J.; WALTER, J. H. Validation of a portable indirect calorimetry system for measurement of energy expenditure in sick preterm infants. Archives of Disease in Childhood, v. 67, n. 10, p. 1207–1211, 1992.
+  -> consumo de O2 do prematuro: cerca de 6 mL/kg/min.
+
+VAN ZADELHOFF, Arjan C. et al. Age-dependent changes in arterial blood pressure in neonates during the first week of life: reference values and development of a model. British Journal of Anaesthesia, v. 130, n. 5, p. 585–594, 2023.
+  -> PAM de prematuros extremos: 27 a 49 mmHg na primeira semana.
+
+WALTHER, Frans J. et al. Pulsed Doppler determinations of cardiac output in neonates: normal standards for clinical use. Pediatrics, v. 76, n. 5, p. 829–833, 1985.
+  -> débito cardíaco neonatal: 249 ± 34 mL/kg/min (normal 200 a 325).
+
+WESTERHOF, Nico; LANKHAAR, Jan-Willem; WESTERHOF, Berend E. The arterial Windkessel. Medical & Biological Engineering & Computing, v. 47, n. 2, p. 131–141, 2009.

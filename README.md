@@ -13,43 +13,65 @@ Perguntas de pesquisa que o código responde:
 
 ---
 
-## Arquivos
+## Estrutura do repositório
+
+```
+PBL2026.2_G1/
+├── README.md
+├── requirements.txt
+├── simuladores/                     código do simulador (Python)
+│   ├── parametros.py                todos os números do projeto
+│   ├── comum.py                     importação dos arquivos numerados e caminhos das figuras
+│   ├── fisiologia.py                acoplamentos ao Windkessel
+│   ├── 01_windkessel_base.py  …  07_figuras_relatorio.py
+│   └── legado/                      protótipo anterior (intacto)
+├── figuras/
+│   ├── simuladores/                 figuras geradas pelos arquivos 01 a 05
+│   └── relatorio_parcial/           figuras 1, 2 e 3 do relatório parcial (arquivo 07)
+└── referencias/
+    ├── referencias_bibliograficas.txt   lista ABNT do relatório + literatura de apoio
+    └── contexto_pesquisa.md             estado do projeto e o que já foi conferido na literatura
+```
+
+## Arquivos de `simuladores/`
 
 | Arquivo | O que faz | Figura |
 |---|---|---|
 | `parametros.py` | todos os números do projeto, com unidade e comentário | — |
 | `comum.py` | importa os arquivos numerados e salva as figuras | — |
 | `fisiologia.py` | adaptações ao Windkessel: pré-carga, viscosidade, barorreflexo, DO₂ | — |
-| `01_windkessel_base.py` | modelo RC base, adulto vs neonato; expõe `regime_estavel` e `curva_batimentos` | `01_...png` |
-| `02_balanco_volume_hemacias.py` | V(t), M(t) e Hct(t) por 28 dias, com coletas e transfusões | `02_...png` |
-| `03_coleta_aguda_windkessel.py` | efeito agudo de 1 mL e 3 mL na escala de segundos | `03_...png` |
-| `04_acoplamento_dias.py` | acopla as duas escalas; reserva cardiovascular alta vs baixa | `04_...png` |
-| `05_estrategias_coleta.py` | compara as estratégias A, B, C e D | `05_...png` |
+| `01_windkessel_base.py` | modelo RC base, adulto vs neonato; expõe `regime_estavel` e `curva_batimentos` | `figuras/simuladores/01_...png` |
+| `02_balanco_volume_hemacias.py` | V(t), M(t) e Hct(t) por 28 dias, com coletas e transfusões | `figuras/simuladores/02_...png` |
+| `03_coleta_aguda_windkessel.py` | efeito agudo de 1 mL e 3 mL na escala de segundos | `figuras/simuladores/03_...png` |
+| `04_acoplamento_dias.py` | acopla as duas escalas; reserva cardiovascular alta vs baixa | `figuras/simuladores/04_...png` |
+| `05_estrategias_coleta.py` | compara as estratégias A, B, C e D | `figuras/simuladores/05_...png` |
 | `06_recomendacao.py` | volume disponível agora e espera até a próxima coleta | — |
+| `07_figuras_relatorio.py` | figuras 1, 2 e 3 do relatório parcial e números da Tabela 2, **sem compensação** | `figuras/relatorio_parcial/` |
 
 Os arquivos `G1_arquivo1.py` e `G1_arquivo1_live.py` são o protótipo anterior e
-ficaram intactos em `legado/` — `01_windkessel_base.py` é a versão refatorada,
-com o modelo exposto em funções reutilizáveis. O `legado/G1_arquivo1_live.py` é
-um monitor interativo (sliders de HR, SV, R e C, preset adulto/neonato,
-batimento extra, pausa) e continua rodando sozinho:
+ficaram intactos em `simuladores/legado/` — `01_windkessel_base.py` é a versão
+refatorada, com o modelo exposto em funções reutilizáveis. O
+`G1_arquivo1_live.py` é um monitor interativo (sliders de HR, SV, R e C, preset
+adulto/neonato, batimento extra, pausa) e continua rodando sozinho:
 
 ```bash
-python legado/G1_arquivo1_live.py
+python simuladores/legado/G1_arquivo1_live.py
 ```
 
 As figuras de `figuras/` estão versionadas: dá para ver os resultados direto no
-GitHub, sem rodar nada. `CONTEXTO_PESQUISA.md` reúne o estado do projeto, as
-pendências de parâmetro e o que já foi conferido na literatura.
+GitHub, sem rodar nada. `referencias/contexto_pesquisa.md` reúne o estado do
+projeto, as pendências de parâmetro e o que já foi conferido na literatura.
 
 ## Rodar
 
 ```bash
 cd ~/Desktop/PBL2026.2
 source .venv/bin/activate        # sempre que abrir um terminal novo
-python 01_windkessel_base.py     # idem para 02, 03, 04, 05, 06
+python simuladores/01_windkessel_base.py     # idem para 02 a 07
 ```
 
-Cada arquivo roda sozinho, imprime sua tabela, salva a figura em `figuras/` e
+Cada arquivo roda sozinho (de qualquer pasta), imprime sua tabela, salva a figura em
+`figuras/simuladores/` (o `07` salva em `figuras/relatorio_parcial/`) e
 abre a janela do matplotlib. Só numpy e matplotlib.
 
 Setup do venv (uma vez):
@@ -107,6 +129,20 @@ Verificações de sanidade impressas pelos arquivos:
 `01` PAM fechada vs média numérica da curva (erro ~1e-5 mmHg);
 `02` resíduo do balanço de V e de M (~1e-13 mL);
 `04` PAM = Pv + R·DC em todos os passos (~1e-14 mmHg).
+
+---
+
+**`07` — figuras do relatório parcial** (sem compensação cardiovascular,
+`P.SEM_COMPENSACAO`; por isso a PAM e o DO₂ diferem dos arquivos `04` e `05`,
+que usam reserva alta/baixa — as transfusões são iguais):
+
+| Estratégia | Coletado | Transf. | 1ª transf. | PAM média | PAM mín | DO₂/kg mín |
+|---|---|---|---|---|---|---|
+| Sem coleta | 0,0 mL | 1 | dia 21,5 | 37,0 | 31,5 | 24,7 |
+| A. Rotina | 22,4 mL | 2 | dia 11,8 | 35,9 | 30,7 | 24,0 |
+| B. Agrupada | 18,2 mL | 2 | dia 13,7 | 36,1 | 30,7 | 24,0 |
+| C. Micrométodo | 8,4 mL | 1 | dia 17,6 | 36,3 | 31,5 | 24,7 |
+| D. Guiada | 18,9 mL | 2 | dia 13,4 | 35,6 | 31,2 | 24,5 |
 
 ---
 
@@ -176,7 +212,7 @@ Pontos onde o código foi além — ou se afastou — do documento de proposta:
 
 ## Notas
 
-- `.venv/`, `__pycache__/` e `figuras/` não devem ir para o Git.
+- `.venv/` e `__pycache__/` não devem ir para o Git; `figuras/` é versionada.
 - Se a Área de Trabalho estiver sincronizada com o iCloud, ele pode tentar
   subir os milhares de arquivos do `.venv/`. Se incomodar, mantenha o venv
   fora da pasta (ex.: `~/.venvs/pbl2026`).
