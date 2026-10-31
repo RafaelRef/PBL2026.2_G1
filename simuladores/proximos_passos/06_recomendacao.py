@@ -1,6 +1,6 @@
 """06 -- Recomendacao: quanto ainda da para coletar e quando dara para coletar.
 
-Funcao de apoio usada pela estrategia D do arquivo 05, e executavel sozinha.
+Funcao de apoio usada pela estrategia D do arquivo 03, e executavel sozinha.
 Tres regras explicitas, todas em `limites`; vale sempre a mais restritiva:
 
   1. janela de 24 h -- a perda acumulada nas ultimas 24 h nao passa de

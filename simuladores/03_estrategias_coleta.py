@@ -1,4 +1,4 @@
-"""05 -- Comparacao de estrategias de coleta (pergunta de pesquisa 1).
+"""03 -- Comparacao de estrategias de coleta (pergunta de pesquisa 1).
 
 Mesma crianca, mesmos 28 dias, mesma reserva cardiovascular; muda so a
 estrategia de coleta:
@@ -167,5 +167,5 @@ def figura(res):
 if __name__ == "__main__":
     res = rodar()
     tabela(res)
-    comum.salvar(figura(res), "05_estrategias_coleta.png")
+    comum.salvar(figura(res), "03_estrategias_coleta.png")
     plt.show()

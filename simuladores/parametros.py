@@ -45,8 +45,8 @@ TAU_V = 6.0                   # h       volume volta para V_ref; hemacias nao
 
 # ------------------------------------------------ coletas
 VOL_COLETA        = 0.80      # mL      coleta de rotina                TODO
-VOL_COLETA_AGUDA  = (1.0, 3.0) # mL     volumes ilustrados no arquivo 03
-HORAS_DEPOIS      = 6.0        # h      "algumas horas depois" no arquivo 03
+VOL_COLETA_AGUDA  = (1.0, 3.0) # mL     volumes ilustrados no arquivo 05
+HORAS_DEPOIS      = 6.0        # h      "algumas horas depois" no arquivo 05
 VOL_COLETA_MICRO  = 0.30      # mL      micrometodo
 FATOR_AGRUPAMENTO = 0.25      # -       custo extra por exame extra na mesma puncao
 
