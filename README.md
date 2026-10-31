@@ -26,6 +26,7 @@ Perguntas de pesquisa que o código responde:
 | `04_acoplamento_dias.py` | acopla as duas escalas; reserva cardiovascular alta vs baixa | `04_...png` |
 | `05_estrategias_coleta.py` | compara as estratégias A, B, C e D | `05_...png` |
 | `06_recomendacao.py` | volume disponível agora e espera até a próxima coleta | — |
+| `07_figuras_relatorio.py` | figuras 1, 2 e 3 do relatório parcial e números da Tabela 2, **sem compensação** | `07_...png` |
 
 Os arquivos `G1_arquivo1.py` e `G1_arquivo1_live.py` são o protótipo anterior e
 ficaram intactos em `legado/` — `01_windkessel_base.py` é a versão refatorada,
@@ -107,6 +108,20 @@ Verificações de sanidade impressas pelos arquivos:
 `01` PAM fechada vs média numérica da curva (erro ~1e-5 mmHg);
 `02` resíduo do balanço de V e de M (~1e-13 mL);
 `04` PAM = Pv + R·DC em todos os passos (~1e-14 mmHg).
+
+---
+
+**`07` — figuras do relatório parcial** (sem compensação cardiovascular,
+`P.SEM_COMPENSACAO`; por isso a PAM e o DO₂ diferem dos arquivos `04` e `05`,
+que usam reserva alta/baixa — as transfusões são iguais):
+
+| Estratégia | Coletado | Transf. | 1ª transf. | PAM média | PAM mín | DO₂/kg mín |
+|---|---|---|---|---|---|---|
+| Sem coleta | 0,0 mL | 1 | dia 21,5 | 37,0 | 31,5 | 24,7 |
+| A. Rotina | 22,4 mL | 2 | dia 11,8 | 35,9 | 30,7 | 24,0 |
+| B. Agrupada | 18,2 mL | 2 | dia 13,7 | 36,1 | 30,7 | 24,0 |
+| C. Micrométodo | 8,4 mL | 1 | dia 17,6 | 36,3 | 31,5 | 24,7 |
+| D. Guiada | 18,9 mL | 2 | dia 13,4 | 35,6 | 31,2 | 24,5 |
 
 ---
 
