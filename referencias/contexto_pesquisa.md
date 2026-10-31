@@ -125,6 +125,8 @@ K_MU = 2,5               FRAC_MAX_24H = 0,03        SaO₂ = 0,92   PaO₂ = 60 
 
 ## 4. Arquivos e resultados obtidos
 
+> Os arquivos `.py` citados abaixo ficam em `simuladores/` desde a reorganização do repositório.
+
 | Arquivo | O que faz |
 |---|---|
 | `parametros.py` | todos os números, com unidade e comentário |

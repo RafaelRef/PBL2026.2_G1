@@ -1,15 +1,17 @@
 """07 -- Figuras do relatorio parcial (Figuras 1, 2 e 3) e numeros da Tabela 2.
 
 Usa as funcoes dos arquivos 02 e 05, SEM compensacao cardiovascular
-(P.SEM_COMPENSACAO). Salva em figuras/07_fig1_fluxo.png, figuras/07_fig2_coleta.png e
-figuras/07_fig3_estrategias.png.
+(P.SEM_COMPENSACAO). Salva em figuras/relatorio_parcial/:
+  fig1_estrutura_simulador.png
+  fig2_efeito_coletas_3_dias.png
+  fig3_comparacao_estrategias.png
 """
 import numpy as np, parametros as P, comum, fisiologia as fis
 import matplotlib.pyplot as plt
 bal=comum.importar("02_balanco_volume_hemacias"); est=comum.importar("05_estrategias_coleta")
 SC=P.SEM_COMPENSACAO
 plt.rcParams.update({"font.family":"DejaVu Serif","font.size":9,"axes.spines.top":False,"axes.spines.right":False})
-comum.FIGURAS.mkdir(exist_ok=True)
+comum.FIGURAS_RELATORIO.mkdir(parents=True, exist_ok=True)
 # ---------- Figura 1: diagrama dos modulos
 from matplotlib.patches import FancyBboxPatch
 fig,ax=plt.subplots(figsize=(8.6,2.1)); ax.set_xlim(0,100); ax.set_ylim(0,30); ax.axis("off")
@@ -25,7 +27,7 @@ for x,t,s,c in B:
 for x in (18.6,38.6,58.6,78.6):
     ax.annotate("",xy=(x+2.2,16.5),xytext=(x,16.5),arrowprops=dict(arrowstyle="-|>",color="#7A1F12",lw=1.2))
 ax.text(60,4.2,r"acoplamento:  $V\rightarrow$ pré-carga $\rightarrow SV$     |     $H\rightarrow\mu(H)\rightarrow R$     |     $H\rightarrow$ Hb $\rightarrow$ CaO$_2$",ha="center",fontsize=7.5,color="#7A1F12")
-fig.savefig(comum.FIGURAS / '07_fig1_fluxo.png',dpi=250,bbox_inches='tight')
+fig.savefig(comum.FIGURAS_RELATORIO / 'fig1_estrutura_simulador.png',dpi=250,bbox_inches='tight')
 
 # ---------- Figura 2: uma rotina, dias 0-3
 rA=bal.simular(bal.agenda_rotina()); sA=fis.serie_hemodinamica(rA,SC)
@@ -44,7 +46,7 @@ for t,_ in rA['coletas']:
     if t/24<=3:
         for a in ax: a.axvline(t/24,color='0.85',lw=0.8,zorder=0)
 for a in ax: a.grid(axis='y',alpha=.3)
-fig.tight_layout(); fig.savefig(comum.FIGURAS / '07_fig2_coleta.png',dpi=220)
+fig.tight_layout(); fig.savefig(comum.FIGURAS_RELATORIO / 'fig2_efeito_coletas_3_dias.png',dpi=220)
 # ---------- Figura 3: estratégias
 res=est.rodar(SC); r0=bal.simular([])
 nomes={'Rotina':'Rotina','Agrupada':'Agrupada','Micrometodo':'Micrométodo','Guiada':'Guiada'}
@@ -66,7 +68,7 @@ for yi,v,t in zip(y,vol,tr):
     a.text(v+0.4,yi,f"{len(t)} transf. (1ª: dia " + f"{t[0][0]/24:.1f}".replace(".",",") + ")",va='center',fontsize=6.8)
 a.set_yticks(y); a.set_yticklabels(lab,fontsize=7.5); a.set_xlim(0,38)
 a.set_xlabel('Sangue coletado em 28 dias (mL)'); a.set_title('(b) Volume coletado e transfusões',fontsize=9,loc='left')
-fig.tight_layout(); fig.savefig(comum.FIGURAS / '07_fig3_estrategias.png',dpi=220)
+fig.tight_layout(); fig.savefig(comum.FIGURAS_RELATORIO / 'fig3_comparacao_estrategias.png',dpi=220)
 
 # tabela 2 (PAM e DO2 sem compensacao)
 for k,l,r in cen:
