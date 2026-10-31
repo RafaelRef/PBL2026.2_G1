@@ -1,6 +1,6 @@
-"""07 -- Figuras do relatorio parcial (Figuras 1, 2 e 3) e numeros da Tabela 2.
+"""04 -- Figuras do relatorio parcial (Figuras 1, 2 e 3) e numeros da Tabela 2.
 
-Usa as funcoes dos arquivos 02 e 05, SEM compensacao cardiovascular
+Usa as funcoes dos arquivos 02 e 03, SEM compensacao cardiovascular
 (P.SEM_COMPENSACAO). Salva em figuras/relatorio_parcial/:
   fig1_estrutura_simulador.png
   fig2_efeito_coletas_3_dias.png
@@ -8,7 +8,7 @@ Usa as funcoes dos arquivos 02 e 05, SEM compensacao cardiovascular
 """
 import numpy as np, parametros as P, comum, fisiologia as fis
 import matplotlib.pyplot as plt
-bal=comum.importar("02_balanco_volume_hemacias"); est=comum.importar("05_estrategias_coleta")
+bal=comum.importar("02_balanco_volume_hemacias"); est=comum.importar("03_estrategias_coleta")
 SC=P.SEM_COMPENSACAO
 plt.rcParams.update({"font.family":"DejaVu Serif","font.size":9,"axes.spines.top":False,"axes.spines.right":False})
 comum.FIGURAS_RELATORIO.mkdir(parents=True, exist_ok=True)

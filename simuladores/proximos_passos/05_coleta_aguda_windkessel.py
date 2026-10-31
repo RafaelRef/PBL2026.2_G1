@@ -1,4 +1,4 @@
-"""03 -- Efeito agudo de uma coleta, na escala de segundos.
+"""05 -- Efeito agudo de uma coleta, na escala de segundos.
 
 Curva de pressao do prematuro em tres momentos -- antes, logo apos a coleta e
 algumas horas depois -- para uma coleta de 1 mL e de 3 mL.
@@ -115,5 +115,5 @@ def figura(volumes=P.VOL_COLETA_AGUDA):
 
 if __name__ == "__main__":
     tabela()
-    comum.salvar(figura(), "03_coleta_aguda_windkessel.png")
+    comum.salvar(figura(), "05_coleta_aguda_windkessel.png")
     plt.show()

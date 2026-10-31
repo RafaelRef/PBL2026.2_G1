@@ -8,9 +8,9 @@ disciplina. Não é ferramenta clínica.
 
 Perguntas de pesquisa que o código responde:
 
-1. Qual estratégia de coleta minimiza o impacto acumulado? → `05`
+1. Qual estratégia de coleta minimiza o impacto acumulado? → `03`
 2. Como a reserva cardiovascular modifica a resposta à perda sanguínea? → relatório final
-   (o arquivo `04`, que comparava reserva alta e baixa, foi removido; está no histórico do Git)
+   (o antigo arquivo de reserva alta vs baixa foi removido; está no histórico do Git)
 
 ---
 
@@ -24,12 +24,15 @@ PBL2026.2_G1/
 │   ├── parametros.py                todos os números do projeto
 │   ├── comum.py                     importação dos arquivos numerados e caminhos das figuras
 │   ├── fisiologia.py                acoplamentos ao Windkessel
-│   ├── 01_windkessel_base.py, 02_…, 05_…, 07_figuras_relatorio.py
-│   ├── proximos_passos/             análises para o relatório final (03 e 06)
+│   ├── 01_windkessel_base.py
+│   ├── 02_balanco_volume_hemacias.py
+│   ├── 03_estrategias_coleta.py
+│   ├── 04_figuras_relatorio.py
+│   ├── proximos_passos/             análises para o relatório final (05 e 06)
 │   └── legado/                      protótipo anterior (intacto)
 ├── figuras/
-│   ├── simuladores/                 figuras geradas pelos arquivos 01 a 05
-│   └── relatorio_parcial/           figuras 1, 2 e 3 do relatório parcial (arquivo 07)
+│   ├── simuladores/                 figuras geradas pelos arquivos 01, 02, 03 e 05
+│   └── relatorio_parcial/           figuras 1, 2 e 3 do relatório parcial (arquivo 04)
 └── referencias/
     ├── referencias_bibliograficas.txt   lista ABNT do relatório + literatura de apoio
     └── contexto_pesquisa.md             estado do projeto e o que já foi conferido na literatura
@@ -44,17 +47,17 @@ PBL2026.2_G1/
 | `fisiologia.py` | adaptações ao Windkessel: pré-carga, viscosidade, barorreflexo, DO₂ | — |
 | `01_windkessel_base.py` | modelo RC base, adulto vs neonato; expõe `regime_estavel` e `curva_batimentos` | `figuras/simuladores/01_...png` |
 | `02_balanco_volume_hemacias.py` | V(t), M(t) e Hct(t) por 28 dias, com coletas e transfusões | `figuras/simuladores/02_...png` |
-| `05_estrategias_coleta.py` | compara as estratégias A, B, C e D | `figuras/simuladores/05_...png` |
-| `07_figuras_relatorio.py` | figuras 1, 2 e 3 do relatório parcial e números da Tabela 2, **sem compensação** | `figuras/relatorio_parcial/` |
+| `03_estrategias_coleta.py` | compara as estratégias A, B, C e D | `figuras/simuladores/03_...png` |
+| `04_figuras_relatorio.py` | figuras 1, 2 e 3 do relatório parcial e números da Tabela 2, **sem compensação** | `figuras/relatorio_parcial/` |
 
 **`simuladores/proximos_passos/`** — análises que não entram no relatório parcial:
 
 | Arquivo | O que faz | Figura |
 |---|---|---|
-| `03_coleta_aguda_windkessel.py` | efeito agudo de 1 mL e 3 mL na escala de segundos, com e sem barorreflexo | `figuras/simuladores/03_...png` |
+| `05_coleta_aguda_windkessel.py` | efeito agudo de 1 mL e 3 mL na escala de segundos, com e sem barorreflexo | `figuras/simuladores/05_...png` |
 | `06_recomendacao.py` | volume disponível agora e espera até a próxima coleta (módulo de recomendação) | — |
 
-O `06` também é usado pela estratégia D (guiada) do `05`; o `comum.importar` encontra
+O `06` também é usado pela estratégia D (guiada) do `03`; o `comum.importar` encontra
 arquivos nas duas pastas.
 
 Os arquivos `G1_arquivo1.py` e `G1_arquivo1_live.py` são o protótipo anterior e
@@ -76,12 +79,12 @@ projeto, as pendências de parâmetro e o que já foi conferido na literatura.
 ```bash
 cd ~/Desktop/PBL2026.2
 source .venv/bin/activate        # sempre que abrir um terminal novo
-python simuladores/01_windkessel_base.py     # idem para 02, 05 e 07
-python simuladores/proximos_passos/03_coleta_aguda_windkessel.py   # idem para 06
+python simuladores/01_windkessel_base.py     # idem para 02, 03 e 04
+python simuladores/proximos_passos/05_coleta_aguda_windkessel.py   # idem para 06
 ```
 
 Cada arquivo roda sozinho (de qualquer pasta), imprime sua tabela, salva a figura em
-`figuras/simuladores/` (o `07` salva em `figuras/relatorio_parcial/`) e
+`figuras/simuladores/` (o `04` salva em `figuras/relatorio_parcial/`) e
 abre a janela do matplotlib. Só numpy e matplotlib.
 
 Setup do venv (uma vez):
@@ -103,7 +106,7 @@ errados; estes saem da solução fechada):
 | Adulto | 119/61 | 86,7 mmHg | 58,3 mmHg | 1,20 s | 4900 mL/min |
 | Neonato | 67/29 | 45,0 mmHg | 38,5 mmHg | 0,47 s | 700 mL/min |
 
-**`03` — efeito agudo** (prematuro de 0,8 kg, V₀ = 68 mL). Repare que o Hct
+**`05` — efeito agudo** (prematuro de 0,8 kg, V₀ = 68 mL). Repare que o Hct
 **não muda** na hora da coleta: sai sangue inteiro. Ele só cai horas depois,
 quando o volume volta como plasma e dilui as hemácias que foram embora.
 
@@ -113,7 +116,7 @@ quando o volume volta como plasma e dilui as hemácias que foram embora.
 | 3 mL | logo após | 43,5 (−3,3%) | **38,8 (−13,7%)** |
 | 3 mL | 6 h depois | 44,2 (−1,8%) | 41,5 (−7,8%) |
 
-**`05` — estratégias** (reserva baixa, pior caso):
+**`03` — estratégias** (reserva baixa, pior caso):
 
 | | Estratégia | Punções | Coletado | % V₀ | Transf. | 1ª transf. | Hct dia 28 |
 |---|---|---|---|---|---|---|---|
@@ -132,8 +135,8 @@ Verificações de sanidade impressas pelos arquivos:
 
 ---
 
-**`07` — figuras do relatório parcial** (sem compensação cardiovascular,
-`P.SEM_COMPENSACAO`; por isso a PAM e o DO₂ diferem do arquivo `05`,
+**`04` — figuras do relatório parcial** (sem compensação cardiovascular,
+`P.SEM_COMPENSACAO`; por isso a PAM e o DO₂ diferem do arquivo `03`,
 que usam reserva alta/baixa — as transfusões são iguais):
 
 | Estratégia | Coletado | Transf. | 1ª transf. | PAM média | PAM mín | DO₂/kg mín |
@@ -153,7 +156,7 @@ Pontos onde o código foi além — ou se afastou — do documento de proposta:
 1. **Dois módulos de apoio além do `parametros.py`.** `import 01_windkessel_base`
    é sintaxe inválida em Python (nome de módulo não pode começar com dígito),
    então `comum.importar()` carrega os arquivos numerados pelo caminho. As
-   adaptações da seção 5 ficaram em `fisiologia.py`, usadas por `03`, `05` e `07`.
+   adaptações da seção 5 ficaram em `fisiologia.py`, usadas por `03`, `04` e `05`.
 
 2. **O prematuro não usa os parâmetros `NEONATO` crus.** Os valores
    `SV = 5 mL, C = 0,13, R = 3,6` correspondem a um neonato a termo

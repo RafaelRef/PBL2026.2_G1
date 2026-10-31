@@ -125,8 +125,11 @@ K_MU = 2,5               FRAC_MAX_24H = 0,03        SaO₂ = 0,92   PaO₂ = 60 
 
 ## 4. Arquivos e resultados obtidos
 
-> Os arquivos `.py` citados abaixo ficam em `simuladores/` desde a reorganização do repositório;
-> o `03` e o `06` estão em `simuladores/proximos_passos/`, e o `04` foi removido (continua no histórico do Git).
+> **Numeração antiga.** Este documento usa a numeração anterior à reorganização do repositório.
+> Correspondência atual: `01` e `02` iguais; `05_estrategias_coleta` → `03_estrategias_coleta`;
+> `07_figuras_relatorio` → `04_figuras_relatorio`; `03_coleta_aguda_windkessel` →
+> `proximos_passos/05_coleta_aguda_windkessel`; `06_recomendacao` → `proximos_passos/06_recomendacao`;
+> o antigo `04_acoplamento_dias` foi removido (continua no histórico do Git).
 
 | Arquivo | O que faz |
 |---|---|
