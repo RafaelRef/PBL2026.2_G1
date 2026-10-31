@@ -11,6 +11,10 @@ Tres regras explicitas, todas em `limites`; vale sempre a mais restritiva:
   3. volume agora   -- V nao cai abaixo de (1 - margem) de V_ref.
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # simuladores/
+
 import numpy as np
 
 import parametros as P

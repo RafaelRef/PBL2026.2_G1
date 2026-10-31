@@ -125,7 +125,8 @@ K_MU = 2,5               FRAC_MAX_24H = 0,03        SaO₂ = 0,92   PaO₂ = 60 
 
 ## 4. Arquivos e resultados obtidos
 
-> Os arquivos `.py` citados abaixo ficam em `simuladores/` desde a reorganização do repositório.
+> Os arquivos `.py` citados abaixo ficam em `simuladores/` desde a reorganização do repositório;
+> o `03` e o `06` estão em `simuladores/proximos_passos/`, e o `04` foi removido (continua no histórico do Git).
 
 | Arquivo | O que faz |
 |---|---|
