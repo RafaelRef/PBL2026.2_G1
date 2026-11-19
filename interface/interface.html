@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BabyCare Hemo</title>
+<style>
+:root{
+  /* paleta da identidade visual do grupo */
+  --tiffany-fundo:#DDF4F1; --tiffany-claro:#E3F6F3; --tiffany:#9EDFD7;
+  --azul-claro:#E6F2FC;    --azul:#CFE6F8;
+  --rosa-claro:#FDEBF0;    --rosa:#F5B3C6;
+  --sangue:#D7263D;        --verde-escuro:#123F38;
+
+  /* tons derivados: os pastéis não têm contraste para traço e texto */
+  --dado-azul:#2F7FA8; --dado-tiffany:#3F9D91; --dado-sangue:#D7263D;
+
+  --bg:var(--tiffany-fundo); --surface:#ffffff; --linha:#C2E7E0;
+  --texto:var(--verde-escuro); --fraco:#5C7F78;
+  --acao:var(--verde-escuro); --acao-texto:#ffffff;
+  --alerta:var(--sangue); --alerta-fundo:var(--rosa-claro);
+  --ok:#1E7A6B;
+  --sombra:0 1px 2px rgba(18,63,56,.07), 0 4px 14px rgba(18,63,56,.05);
+  --raio:14px;
+}
+:root[data-theme="dark"]{
+  --bg:#0B1E1A; --surface:#112C27; --linha:#1E443C;
+  --texto:#E3F6F3; --fraco:#8FB5AD;
+  --acao:var(--tiffany); --acao-texto:#0B1E1A;
+  --alerta:#FF6B7F; --alerta-fundo:rgba(215,38,61,.16);
+  --ok:#6FD7C4;
+  --dado-azul:#7FC3E8; --dado-tiffany:#6FD0C2; --dado-sangue:#FF6B7F;
+  --sombra:0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+}
+:root[data-theme="dark"] .aviso.ok{background:rgba(158,223,215,.13)}
+:root[data-theme="dark"] .metrica{background:rgba(158,223,215,.07)}
+:root[data-theme="dark"] .exame{background:rgba(207,230,248,.06)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--texto);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.envelope{max-width:980px;margin:0 auto;padding:22px 16px 56px}
+
+/* ---------------------------------------------------------- marca */
+.marca{display:flex;align-items:center;gap:13px}
+.marca svg{width:44px;height:auto;flex:none}
+.marca .nome{font-size:25px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.marca .nome .hemo{color:var(--sangue)}
+.marca .sub{font-size:13px;color:var(--fraco);line-height:1.3}
+.topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding-bottom:18px;border-bottom:1px solid var(--linha);margin-bottom:22px}
+.espaco{flex:1}
+footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--linha);
+  font-size:12.5px;color:var(--fraco);text-align:center}
+
+/* ---------------------------------------------------------- base */
+h2{font-size:16.5px;margin:0 0 14px}
+h3{font-size:12.5px;margin:0 0 10px;color:var(--fraco);
+  text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.cartao{background:var(--surface);border:1px solid var(--linha);
+  border-radius:var(--raio);padding:20px;box-shadow:var(--sombra);margin-bottom:16px}
+label{display:block;font-size:13px;color:var(--fraco);margin:0 0 5px;font-weight:500}
+input{width:100%;padding:10px 12px;border:1px solid var(--linha);
+  border-radius:9px;background:var(--bg);color:var(--texto);font:inherit}
+input:focus{outline:2px solid var(--dado-tiffany);outline-offset:-1px}
+.campos{display:grid;gap:13px;grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}
+button{padding:10px 17px;border:1px solid var(--acao);border-radius:9px;
+  background:var(--acao);color:var(--acao-texto);font:inherit;font-weight:600;
+  cursor:pointer;transition:filter .12s}
+button:hover:not(:disabled){filter:brightness(1.15)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.secundario{background:transparent;color:var(--acao)}
+button.discreto{background:transparent;color:var(--fraco);border-color:var(--linha);
+  font-weight:500}
+.aviso{padding:11px 14px;border-radius:9px;font-size:14px;margin:13px 0 0;
+  border:1px solid var(--linha)}
+.aviso.erro{background:var(--alerta-fundo);border-color:var(--alerta);color:var(--alerta)}
+.aviso.ok{background:var(--tiffany-claro);border-color:var(--tiffany);color:var(--ok)}
+.oculto{display:none !important}
+.vazio{color:var(--fraco);font-size:14px;padding:20px 0;text-align:center}
+.nota{font-size:12.5px;color:var(--fraco);margin-top:11px}
+
+/* ---------------------------------------------------------- lista */
+.lista{display:grid;gap:10px}
+.paciente{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  padding:15px 17px;background:var(--surface);border:1px solid var(--linha);
+  border-radius:var(--raio);cursor:pointer;color:var(--texto);font:inherit;
+  box-shadow:var(--sombra);transition:border-color .12s,transform .12s}
+.paciente:hover{border-color:var(--dado-tiffany);transform:translateY(-1px)}
+.paciente .nome{font-weight:700}
+.paciente .meta{font-size:13px;color:var(--fraco)}
+.hct{font-variant-numeric:tabular-nums;font-weight:700;font-size:17px}
+.alerta{color:var(--alerta)}
+.seguro{color:var(--ok)}
+
+/* ---------------------------------------------------------- métricas */
+.grade{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}
+.metrica{background:var(--tiffany-claro);border:1px solid var(--linha);
+  border-radius:11px;padding:13px}
+.metrica .rotulo{font-size:12px;color:var(--fraco);margin-bottom:3px}
+.metrica .valor{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.metrica .unidade{display:block;font-size:12px;font-weight:500;
+  color:var(--fraco);margin-top:2px}
+
+/* ---------------------------------------------------------- exames */
+.exames{display:grid;gap:13px;grid-template-columns:repeat(auto-fit,minmax(235px,1fr))}
+.exame{border:1px solid var(--linha);border-radius:11px;padding:15px;
+  background:var(--azul-claro);display:flex;flex-direction:column;gap:11px}
+.exame header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.exame header strong{font-size:15px}
+.exame .vol{font-size:13px;color:var(--fraco);font-variant-numeric:tabular-nums}
+.contagem{display:flex;gap:13px;font-variant-numeric:tabular-nums}
+.contagem div{flex:1}
+.contagem .n{font-size:23px;font-weight:800;line-height:1.1}
+.contagem .leg{font-size:11px;color:var(--fraco);line-height:1.3}
+.exame button{width:100%}
+
+/* ---------------------------------------------------------- gráficos */
+.legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;
+  color:var(--fraco);margin-bottom:6px}
+.legenda span{display:inline-flex;align-items:center;gap:6px}
+.chave{width:16px;height:0;border-top-width:2.5px;border-top-style:solid}
+svg.gr{display:block;width:100%;height:auto}
+
+/* ---------------------------------------------------------- tabela */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linha)}
+th{font-size:11.5px;color:var(--fraco);text-transform:uppercase;letter-spacing:.06em}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="envelope">
+
+  <div class="topo">
+    <div class="marca">
+      <!-- gotinha do logotipo, desenhada em SVG para não depender de arquivo -->
+      <svg viewBox="0 0 64 76" role="img" aria-label="Logotipo: gotinha de sangue com rosto de bebê">
+        <path d="M32 3C32 3 8 33 8 48a24 24 0 0 0 48 0C56 33 32 3 32 3Z" fill="#D7263D"/>
+        <path d="M19 46c-1-8 3-15 8-21" stroke="#F5B3C6" stroke-width="4.5"
+              stroke-linecap="round" fill="none" opacity=".85"/>
+        <ellipse cx="24" cy="48" rx="3.5" ry="4.4" fill="#fff"/>
+        <ellipse cx="40" cy="48" rx="3.5" ry="4.4" fill="#fff"/>
+        <circle cx="32" cy="62" r="7" fill="#F5B3C6"/>
+        <circle cx="32" cy="62" r="3.6" fill="#FDEBF0"/>
+      </svg>
+      <div>
+        <div class="nome" id="marca-nome"></div>
+        <div class="sub" id="marca-sub"></div>
+      </div>
+    </div>
+    <div class="espaco"></div>
+    <button class="discreto" id="tema" title="Alternar tema claro/escuro"
+            aria-label="Alternar tema claro ou escuro">&#9789;</button>
+    <div id="sessao" class="oculto">
+      <span class="sub" id="quem" style="color:var(--fraco);font-size:13px"></span>
+      <button class="discreto" id="sair">Sair</button>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------ LOGIN -->
+  <section id="tela-login">
+    <div class="cartao" style="max-width:430px;margin-inline:auto">
+      <h2 id="titulo-login">Acesso do médico</h2>
+      <form id="form-login">
+        <div style="display:grid;gap:13px">
+          <div id="campo-nome" class="oculto">
+            <label for="in-nome">Nome do profissional</label>
+            <input id="in-nome" autocomplete="name" placeholder="Dra. Ana Souza">
+          </div>
+          <div>
+            <label for="in-usuario">Login</label>
+            <input id="in-usuario" autocomplete="username" required>
+          </div>
+          <div>
+            <label for="in-senha">Senha</label>
+            <input id="in-senha" type="password" autocomplete="current-password" required>
+          </div>
+          <button type="submit" id="btn-login">Entrar</button>
+          <button type="button" class="secundario" id="alternar">
+            Primeiro acesso? Cadastrar médico
+          </button>
+        </div>
+      </form>
+      <div id="aviso-login"></div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ LISTA -->
+  <section id="tela-pacientes" class="oculto">
+    <div class="cartao">
+      <h2>Cadastrar novo paciente</h2>
+      <form id="form-paciente">
+        <div class="campos">
+          <div>
+            <label for="p-nome">Nome / identificação</label>
+            <input id="p-nome" required placeholder="RN de Maria Silva">
+          </div>
+          <div>
+            <label for="p-peso">Peso atual (kg)</label>
+            <input id="p-peso" type="number" step="0.01" min="0.3" max="6" required placeholder="0.80">
+          </div>
+          <div>
+            <label for="p-semana">Semana de vida</label>
+            <input id="p-semana" type="number" step="0.5" min="0" max="52" required placeholder="2">
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <button type="submit" style="width:100%">Cadastrar</button>
+          </div>
+        </div>
+      </form>
+      <div class="nota" id="previa-volume"></div>
+      <div id="aviso-paciente"></div>
+    </div>
+
+    <h3>Pacientes internados</h3>
+    <div class="lista" id="lista-pacientes"></div>
+  </section>
+
+  <!-- ------------------------------------------------ PACIENTE -->
+  <section id="tela-paciente" class="oculto">
+    <button class="discreto" id="voltar" style="margin-bottom:14px">← Lista de pacientes</button>
+    <div id="detalhe"></div>
+  </section>
+
+  <footer id="rodape"></footer>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const estado = { token:null, nome:null, cfg:null, pacienteId:null, modoCadastro:false };
+
+// ------------------------------------------------------------- API
+async function api(rota, opcoes = {}) {
+  const cab = { "Content-Type": "application/json" };
+  if (estado.token) cab.Authorization = "Bearer " + estado.token;
+  const resp = await fetch(rota, { ...opcoes, headers: cab,
+    body: opcoes.corpo ? JSON.stringify(opcoes.corpo) : undefined });
+  let dados = {};
+  try { dados = await resp.json(); } catch (e) { /* resposta sem JSON */ }
+  if (!resp.ok) {
+    if (resp.status === 401 && estado.token) sair();
+    throw new Error(dados.erro || `Falha na comunicação (${resp.status}).`);
+  }
+  return dados;
+}
+function avisar(alvo, texto, tipo = "erro") {
+  const el = $(alvo); if (!el) return;
+  el.innerHTML = texto ? `<div class="aviso ${tipo}">${esc(texto)}</div>` : "";
+}
+const esc = t => String(t).replace(/[&<>"']/g,
+  c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const n1 = x => x.toFixed(1), n2 = x => x.toFixed(2), n3 = x => x.toFixed(3);
+
+function mostrar(tela) {
+  for (const t of ["tela-login", "tela-pacientes", "tela-paciente"])
+    $("#" + t).classList.toggle("oculto", t !== tela);
+  $("#sessao").classList.toggle("oculto", tela === "tela-login");
+}
+
+// ------------------------------------------------------------- login
+$("#alternar").onclick = () => {
+  estado.modoCadastro = !estado.modoCadastro;
+  $("#campo-nome").classList.toggle("oculto", !estado.modoCadastro);
+  $("#titulo-login").textContent = estado.modoCadastro ? "Cadastrar médico" : "Acesso do médico";
+  $("#btn-login").textContent = estado.modoCadastro ? "Cadastrar e entrar" : "Entrar";
+  $("#alternar").textContent = estado.modoCadastro
+    ? "Já tenho cadastro" : "Primeiro acesso? Cadastrar médico";
+  avisar("#aviso-login", "");
+};
+
+$("#form-login").onsubmit = async ev => {
+  ev.preventDefault();
+  $("#btn-login").disabled = true;
+  try {
+    const corpo = { usuario: $("#in-usuario").value, senha: $("#in-senha").value,
+                    nome: $("#in-nome").value };
+    const r = await api(estado.modoCadastro ? "/api/registrar" : "/api/login",
+                        { method: "POST", corpo });
+    estado.token = r.token; estado.nome = r.nome;
+    sessionStorage.setItem("bch.token", r.token);
+    sessionStorage.setItem("bch.nome", r.nome);
+    $("#in-senha").value = "";
+    await entrar();
+  } catch (e) { avisar("#aviso-login", e.message); }
+  finally { $("#btn-login").disabled = false; }
+};
+
+async function entrar() {
+  $("#quem").textContent = estado.nome + " · ";
+  await carregarLista();
+  mostrar("tela-pacientes");
+}
+function sair() {
+  if (estado.token) api("/api/logout", { method: "POST" }).catch(() => {});
+  estado.token = estado.nome = estado.pacienteId = null;
+  sessionStorage.removeItem("bch.token");
+  sessionStorage.removeItem("bch.nome");
+  mostrar("tela-login");
+}
+$("#sair").onclick = sair;
+
+// ------------------------------------------------------------- tema
+// Claro por padrão: é a identidade visual do grupo. A preferência fica no
+// navegador de quem usa (pode falhar em aba anônima, daí o try).
+function aplicarTema(t) {
+  document.documentElement.dataset.theme = t;
+  $("#tema").innerHTML = t === "dark" ? "&#9728;" : "&#9789;";
+  try { localStorage.setItem("bch.tema", t); } catch (e) { /* sem storage */ }
+}
+$("#tema").onclick = () =>
+  aplicarTema(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+
+// ------------------------------------------------------------- lista
+async function carregarLista() {
+  const { pacientes } = await api("/api/pacientes");
+  const alvo = $("#lista-pacientes");
+  if (!pacientes.length) {
+    alvo.innerHTML = `<div class="vazio">Nenhum paciente cadastrado ainda.</div>`;
+    return;
+  }
+  alvo.innerHTML = "";
+  for (const p of pacientes) {
+    const b = document.createElement("button");
+    b.className = "paciente";
+    b.innerHTML = `
+      <div style="flex:1">
+        <div class="nome">${esc(p.nome)}</div>
+        <div class="meta">${n2(p.peso)} kg · ${n1(p.semana_vida)} sem de vida ·
+          volume ${Math.round(p.V_ref)} mL · ${p.coletas} coleta(s)</div>
+      </div>
+      <div style="text-align:right">
+        <div class="hct ${p.transfusao_indicada ? "alerta" : "seguro"}">Hct ${n3(p.Hct)}</div>
+        <div class="meta">${p.transfusao_indicada ? "transfusão indicada"
+          : "crítico " + n3(p.hct_limiar) + " · cabem " + n2(p.disponivel) + " mL"}</div>
+      </div>`;
+    b.onclick = () => abrirPaciente(p.id);
+    alvo.appendChild(b);
+  }
+}
+
+$("#p-peso").oninput = () => {
+  const peso = parseFloat($("#p-peso").value);
+  $("#previa-volume").textContent = (peso > 0 && estado.cfg)
+    ? `Volume sanguíneo estimado ${Math.round(peso * estado.cfg.vol_por_kg)} mL `
+      + `(${estado.cfg.vol_por_kg} mL/kg). Hematócrito crítico para esse peso: `
+      + `${n3(hctCritico(peso))}.`
+    : "";
+};
+
+// espelha fisiologia.hct_critico só para a prévia; o valor que vale é o do servidor
+function hctCritico(peso) {
+  const px = [0.75, 1.00, 1.50, 2.50], py = [0.33, 0.31, 0.28, 0.25];
+  if (peso <= px[0]) return py[0];
+  if (peso >= px[px.length - 1]) return py[py.length - 1];
+  for (let i = 1; i < px.length; i++)
+    if (peso <= px[i])
+      return py[i - 1] + (py[i] - py[i - 1]) * (peso - px[i - 1]) / (px[i] - px[i - 1]);
+  return py[py.length - 1];
+}
+
+$("#form-paciente").onsubmit = async ev => {
+  ev.preventDefault();
+  try {
+    const r = await api("/api/pacientes", { method: "POST", corpo: {
+      nome: $("#p-nome").value, peso: $("#p-peso").value,
+      semana_vida: $("#p-semana").value } });
+    $("#form-paciente").reset();
+    $("#previa-volume").textContent = "";
+    avisar("#aviso-paciente", "");
+    await carregarLista();
+    abrirPaciente(r.paciente.id);
+  } catch (e) { avisar("#aviso-paciente", e.message); }
+};
+
+// ------------------------------------------------------------- paciente
+$("#voltar").onclick = async () => {
+  estado.pacienteId = null;
+  await carregarLista();
+  mostrar("tela-pacientes");
+};
+
+async function abrirPaciente(id) {
+  estado.pacienteId = id;
+  mostrar("tela-paciente");
+  $("#detalhe").innerHTML = `<div class="vazio">Simulando o balanço de volume e hemácias…</div>`;
+  try { desenhar(await api("/api/pacientes/" + id)); }
+  catch (e) { $("#detalhe").innerHTML = `<div class="aviso erro">${esc(e.message)}</div>`; }
+}
+
+async function coletar(exame) {
+  for (const b of document.querySelectorAll(".exame button")) b.disabled = true;
+  try {
+    desenhar(await api(`/api/pacientes/${estado.pacienteId}/coletas`,
+                       { method: "POST", corpo: { exame } }));
+    avisar("#aviso-coleta", "Coleta registrada.", "ok");
+  } catch (e) {
+    await abrirPaciente(estado.pacienteId);
+    avisar("#aviso-coleta", e.message);
+  }
+}
+
+function desenhar(d) {
+  const p = d.paciente, a = d.avaliacao, cfg = estado.cfg, cr = cfg.crescimento;
+  const critico = a.transfusao_indicada;
+
+  const metricas = [
+    ["Peso hoje", n2(a.peso), `kg · nasceu com ${n2(a.peso_nascimento)}`],
+    ["Idade", n1(a.semana_vida), `semanas (dia ${Math.round(a.dia_vida)})`],
+    ["Volume sanguíneo", Math.round(a.V_ref), `mL de referência`],
+    ["Volume atual", n1(a.V), `mL`],
+    ["Hematócrito", n3(a.Hct), `crítico ${n3(a.hct_limiar)} neste peso`],
+    ["Cabe coletar", n2(a.disponivel), "mL agora"],
+  ].map(([r, v, u]) => `<div class="metrica"><div class="rotulo">${r}</div>
+      <div class="valor${r === "Hematócrito" ? (critico ? " alerta" : " seguro") : ""}">${v}
+      <span class="unidade">${esc(u)}</span></div></div>`).join("");
+
+  const exames = Object.values(a.exames).map(e => `
+    <div class="exame">
+      <header><strong>${esc(e.nome)}</strong><span class="vol">${n2(e.volume)} mL</span></header>
+      <div class="contagem">
+        <div><div class="n ${e.cabe_agora ? "seguro" : "alerta"}">${e.cabe_agora}</div>
+             <div class="leg">cabem agora</div></div>
+        <div><div class="n">${e.restante_24h}</div>
+             <div class="leg">restam nas<br>24 h (teto ${e.teto_diario})</div></div>
+        <div><div class="n">${e.ate_hct_critico}</div>
+             <div class="leg">até o Hct<br>crítico</div></div>
+      </div>
+      <div class="nota" style="margin:0">${esc(e.texto_espera)}</div>
+      <button data-exame="${esc(e.chave)}" ${e.cabe_agora ? "" : "disabled"}>
+        Registrar ${esc(e.nome.toLowerCase())}</button>
+    </div>`).join("");
+
+  const historico = p.coletas.length ? p.coletas.map(c => `
+    <tr><td>${esc(cfg.exames.find(x => x.chave === c.exame)?.nome || c.exame)}</td>
+        <td class="num">${n2(c.volume)} mL</td>
+        <td class="num">dia ${n1(c.hora_vida / 24)} de vida</td></tr>`).join("")
+    : `<tr><td colspan="3" class="vazio">Nenhuma coleta registrada.</td></tr>`;
+
+  $("#detalhe").innerHTML = `
+    <div class="cartao">
+      <h2>${esc(p.nome)}</h2>
+      <div class="nota" style="margin:-8px 0 15px">
+        cadastrado por ${esc(p.cadastrado_por)} · crescendo
+        ${cr.ganho_g_kg_dia} g/kg/dia · ${p.coletas.length} coleta(s),
+        ${n2(a.coletado_total)} mL no total
+        (${(100 * a.frac_coletado).toFixed(1)}% do volume inicial)
+      </div>
+      <div class="grade">${metricas}</div>
+      ${critico ? `<div class="aviso erro">Hematócrito abaixo do crítico
+        de ${n3(a.hct_limiar)} para ${n2(a.peso)} kg — transfusão indicada.
+        Novas coletas estão bloqueadas.</div>` : ""}
+    </div>
+
+    <div class="cartao">
+      <h2>Registrar nova coleta</h2>
+      <div class="exames">${exames}</div>
+      <div id="aviso-coleta"></div>
+    </div>
+
+    <div class="cartao">
+      <h2>Hematócrito no tempo</h2>
+      ${legenda([["--dado-sangue", "Hct do bebê", false],
+                 ["--dado-sangue", "limiar crítico (cai com o peso)", true]])}
+      ${graficoHct(a)}
+      <div class="nota">O limiar crítico não é fixo: vem de
+      <code>fisiologia.hct_critico(peso)</code> e desce conforme o bebê cresce
+      (${n3(hctCritico(a.peso_nascimento))} ao nascer →
+      ${n3(a.hct_limiar)} hoje). A queda do Hct é a anemia fisiológica do
+      modelo — a produção de hemácias não acompanha o crescimento — e cada
+      punção acelera essa queda. Hemácias destruídas com meia-vida de
+      ${cr.vida_hemacia_dias} dias.</div>
+    </div>
+
+    <div class="cartao">
+      <h2>Volume sanguíneo no tempo</h2>
+      ${legenda([["--dado-azul", "volume atual V", false],
+                 ["--dado-tiffany", "volume de referência V_ref", true]])}
+      ${graficoVolume(a, cr)}
+      <div class="nota">V_ref sobe porque o bebê cresce
+      (${cr.ganho_g_kg_dia} g/kg/dia × ${cr.vol_por_kg} mL/kg). Cada punção
+      derruba V na hora; o volume volta sozinho em algumas horas
+      (τ = ${cr.tau_v_h} h), repondo plasma, não hemácias — é por isso que o
+      Hct cai depois da coleta, e não durante.</div>
+    </div>
+
+    <div class="cartao">
+      <h2>Histórico de coletas</h2>
+      <table><thead><tr><th>Exame</th><th class="num">Volume</th>
+        <th class="num">Quando</th></tr></thead><tbody>${historico}</tbody></table>
+    </div>`;
+
+  for (const b of document.querySelectorAll(".exame button"))
+    b.onclick = () => coletar(b.dataset.exame);
+}
+
+// ------------------------------------------------------------- gráficos
+function legenda(itens) {
+  return `<div class="legenda">` + itens.map(([cor, texto, tracejada]) =>
+    `<span><i class="chave" style="border-top-color:var(${cor});
+      border-top-style:${tracejada ? "dashed" : "solid"}"></i>${esc(texto)}</span>`
+  ).join("") + `</div>`;
+}
+
+/* Desenha um ou mais traços contra o mesmo eixo. `linhas` é uma lista de
+   {ys, cor, tracejada}; `banda` pinta a área abaixo de uma curva. */
+function grafico({ xs, linhas, banda, formatar, rotulo, unidade }) {
+  const L = 48, R = 14, T = 28, B = 46, W = 680, H = 244;
+  if (!xs || xs.length < 2)
+    return `<div class="vazio">O gráfico aparece a partir do 1º dia de vida.</div>`;
+  const todos = linhas.flatMap(l => l.ys);
+  const x0 = 0, x1 = Math.max(1, xs[xs.length - 1]);
+  let lo = Math.min(...todos), hi = Math.max(...todos);
+  const folga = (hi - lo) * 0.12 || Math.max(hi * 0.05, 0.01);
+  lo -= folga; hi += folga;
+  const px = d => L + (d - x0) / (x1 - x0) * (W - L - R);
+  const py = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const pontos = ys => xs.map((d, i) => `${px(d).toFixed(1)},${py(ys[i]).toFixed(1)}`).join(" ");
+
+  const marcas = [];
+  const passoY = (hi - lo) / 4;
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + k * passoY;
+    marcas.push(`<line x1="${L}" y1="${py(v).toFixed(1)}" x2="${W - R}"
+      y2="${py(v).toFixed(1)}" stroke="var(--linha)" stroke-width="1"/>
+      <text x="${L - 7}" y="${(py(v) + 4).toFixed(1)}" text-anchor="end"
+      font-size="11" fill="var(--fraco)">${formatar(v)}</text>`);
+  }
+  const dias = [];
+  const passoX = Math.max(1, Math.round(x1 / 7));
+  for (let d = 0; d <= x1 + 0.001; d += passoX)
+    dias.push(`<text x="${px(d).toFixed(1)}" y="${H - 26}" text-anchor="middle"
+      font-size="11" fill="var(--fraco)">${Math.round(d)}</text>`);
+
+  const area = banda
+    ? `<polygon points="${pontos(banda.ys)} ${px(x1).toFixed(1)},${py(lo).toFixed(1)}
+         ${px(x0).toFixed(1)},${py(lo).toFixed(1)}"
+         fill="var(${banda.cor})" opacity="${banda.opacidade ?? 0.18}"/>` : "";
+
+  const tracos = linhas.map(l => `<polyline points="${pontos(l.ys)}" fill="none"
+    stroke="var(${l.cor})" stroke-width="${l.tracejada ? 1.8 : 2.2}"
+    stroke-linejoin="round"
+    ${l.tracejada ? 'stroke-dasharray="6 4"' : ""}/>`).join("");
+
+  const ultima = linhas[0];
+  return `<svg class="gr" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(rotulo)}">
+    ${marcas.join("")}${area}${tracos}
+    <circle cx="${px(xs[xs.length - 1]).toFixed(1)}"
+            cy="${py(ultima.ys[ultima.ys.length - 1]).toFixed(1)}" r="4"
+            fill="var(${ultima.cor})"/>
+    ${dias.join("")}
+    <text x="${((L + W - R) / 2).toFixed(0)}" y="${H - 7}" text-anchor="middle"
+      font-size="11" fill="var(--fraco)" opacity=".8">dia de vida</text>
+    <text x="${L - 7}" y="14" text-anchor="end" font-size="11"
+      fill="var(--fraco)" opacity=".8">${esc(unidade)}</text>
+  </svg>`;
+}
+
+function graficoHct(a) {
+  return grafico({
+    xs: a.serie.dia,
+    banda: { ys: a.serie.hct_crit, cor: "--sangue", opacidade: 0.13 },
+    linhas: [{ ys: a.serie.Hct, cor: "--dado-sangue" },
+             { ys: a.serie.hct_crit, cor: "--dado-sangue", tracejada: true }],
+    formatar: v => v.toFixed(2),
+    unidade: "Hct",
+    rotulo: `Hematócrito desde o nascimento, hoje em ${n3(a.Hct)}, `
+          + `com limiar crítico de ${n3(a.hct_limiar)}`,
+  });
+}
+
+function graficoVolume(a, cr) {
+  return grafico({
+    xs: a.serie.dia,
+    linhas: [{ ys: a.serie.V, cor: "--dado-azul" },
+             { ys: a.serie.V_ref, cor: "--dado-tiffany", tracejada: true }],
+    formatar: v => Math.round(v),
+    unidade: "mL",
+    rotulo: `Volume sanguíneo desde o nascimento, hoje em ${n1(a.V)} mL `
+          + `contra ${n1(a.V_ref)} mL de referência`,
+  });
+}
+
+// ------------------------------------------------------------- início
+(async () => {
+  try { estado.cfg = await api("/api/config"); }
+  catch (e) {
+    avisar("#aviso-login", "Servidor não respondeu. Rode: python app.py");
+    return;
+  }
+  const m = estado.cfg.marca;
+  document.title = `${m.nome1} ${m.nome2}`;
+  $("#marca-nome").innerHTML = `${esc(m.nome1)} <span class="hemo">${esc(m.nome2)}</span>`;
+  $("#marca-sub").textContent = m.subtitulo;
+  $("#rodape").textContent = m.rodape;
+
+  let tema = "light";
+  try { tema = localStorage.getItem("bch.tema") || "light"; } catch (e) { /* idem */ }
+  aplicarTema(tema);
+
+  const token = sessionStorage.getItem("bch.token");
+  if (token) {
+    estado.token = token;
+    estado.nome = sessionStorage.getItem("bch.nome") || "";
+    try { await entrar(); return; } catch (e) { sair(); }
+  }
+  mostrar("tela-login");
+})();
+</script>
+</body>
+</html>

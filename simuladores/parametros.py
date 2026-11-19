@@ -47,11 +47,59 @@ TAU_V = 6.0                   # h       volume volta para V_ref; hemacias nao
 VOL_COLETA        = 0.80      # mL      coleta de rotina                TODO
 VOL_COLETA_AGUDA  = (1.0, 3.0) # mL     volumes ilustrados no arquivo 05
 HORAS_DEPOIS      = 6.0        # h      "algumas horas depois" no arquivo 05
-VOL_COLETA_MICRO  = 0.30      # mL      micrometodo
+VOL_COLETA_MICRO  = 0.50      # mL      micrometodo
 FATOR_AGRUPAMENTO = 0.25      # -       custo extra por exame extra na mesma puncao
+
+# ------------------------------------------------ exames (interface clinica)
+# Volume de sangue por puncao, em mL. Sao os tres exames que a interface
+# web oferece ao medico.                                          TODO
+EXAMES = {
+    "gasometria": dict(nome="Gasometria", volume=0.50),
+    "hemograma":  dict(nome="Hemograma",  volume=1.00),
+    "glicemia":   dict(nome="Glicemia",   volume=0.05),
+}
+
+# ------------------------------------------------ interface web
+# Marca. O nome ainda pode mudar -- trocar aqui muda a interface inteira.
+APP_NOME_1    = "BabyCare"            # parte em verde do logotipo
+APP_NOME_2    = "Hemo"                # parte em vermelho
+APP_SUBTITULO = "simulador de coletas de sangue em prematuros"
+APP_RODAPE    = "PBL 2026.2 \u00b7 Grupo 1 \u00b7 UTI neonatal"
+
+# Paleta (imagem de identidade visual do grupo)
+COR_FUNDO_TIFFANY   = "#DDF4F1"
+COR_TIFFANY_CLARO   = "#E3F6F3"
+COR_VERDE_TIFFANY   = "#9EDFD7"
+COR_AZUL_BEBE_CLARO = "#E6F2FC"
+COR_AZUL_BEBE       = "#CFE6F8"
+COR_ROSA_CLARO      = "#FDEBF0"
+COR_ROSA            = "#F5B3C6"
+COR_SANGUE          = "#D7263D"       # gotinha do logotipo
+COR_VERDE_ESCURO    = "#123F38"       # texto do logotipo
+
+HOST          = "127.0.0.1"   # so local: e' uma prova de conceito didatica
+PORTA         = 8000
+ARQUIVO_DADOS = "dados_clinicos.json"
+PBKDF2_ITER   = 200_000       # iteracoes do hash de senha
+SESSAO_HORAS  = 8.0           # validade do token de sessao
 
 # ------------------------------------------------ transfusao
 HCT_LIMIAR      = 0.30        # -       limiar de indicacao             TODO
+                              #         valor unico, usado pelos arquivos
+                              #         numerados. A interface clinica usa
+                              #         fisiologia.hct_critico(peso), abaixo.
+
+# Limiar que varia com o peso: quanto menor o bebe, menos reserva ele tem e
+# mais alto o Hct em que se indica transfusao. Pares (peso [kg], Hct), com
+# interpolacao linear entre eles e patamar fora das pontas.
+#
+# ATENCAO: a literatura (PINT, ETTNO) indexa o limiar pela IDADE POS-NATAL e
+# pelo suporte respiratorio, nao pelo peso. Aqui o peso entra como proxy de
+# maturidade -- no modelo ele cresce com a idade. Ancoras centradas em
+# HCT_LIMIAR no peso do prematuro de referencia, para os resultados seguirem
+# comparaveis aos dos arquivos numerados.                          TODO
+HCT_CRIT_PESOS   = (0.75, 1.00, 1.50, 2.50)   # kg
+HCT_CRIT_VALORES = (0.33, 0.31, 0.28, 0.25)   # -
 MARGEM_HCT      = 0.03        # -       folga que a estrategia guiada mantem
                               #         acima do limiar (nao coletar o
                               #         paciente ate a transfusao)

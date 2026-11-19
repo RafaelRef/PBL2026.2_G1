@@ -20,6 +20,13 @@ Perguntas de pesquisa que o código responde:
 PBL2026.2_G1/
 ├── README.md
 ├── requirements.txt
+├── app.py                           servidor da interface clínica (BabyCare Hemo)
+├── interface/                       interface web para o médico
+│   ├── interface.html               a tela (HTML/CSS/JS, sem dependência externa)
+│   ├── clinico.py                   login, pacientes, coletas e as regras
+│   ├── armazem.py                   onde os dados ficam: arquivo local ou Supabase
+│   ├── supabase_db.py               cliente PostgREST (só biblioteca padrão)
+│   └── esquema.sql                  tabelas a criar no Supabase
 ├── simuladores/                     código do simulador (Python)
 │   ├── parametros.py                todos os números do projeto
 │   ├── comum.py                     importação dos arquivos numerados e caminhos das figuras
@@ -95,6 +102,128 @@ python -m pip install -r requirements.txt
 ```
 
 ---
+
+## Interface do médico — BabyCare Hemo
+
+Os arquivos de `simuladores/` rodam no terminal e geram as figuras. A interface
+web põe o **mesmo modelo** na mão de quem está à beira do leito:
+
+```bash
+source .venv/bin/activate
+python app.py                    # abre http://127.0.0.1:8000 no navegador
+python app.py --porta 8080 --sem-navegador
+```
+
+Fluxo: **login do médico → cadastro do paciente → lista → coletas**.
+
+1. **Login.** No primeiro acesso, "Cadastrar médico". A senha nunca é guardada
+   em texto: só o hash PBKDF2-SHA256 com salt por usuário.
+2. **Novo paciente.** Nome, peso atual e semana de vida. O volume sanguíneo sai
+   na hora de `fisiologia.volume_referencia`: `V_ref = 85 mL/kg`.
+3. **Lista.** Peso, idade, volume, Hct de hoje, o limiar crítico daquele bebê e
+   quanto ainda cabe coletar.
+4. **Registrar coleta.** Três exames, com o volume de cada um (`P.EXAMES`):
+   gasometria 0,50 mL, hemograma 1,00 mL, glicemia 0,05 mL. Para cada um a tela
+   responde **quantas punções ainda cabem**:
+
+   | Número | Significado |
+   |---|---|
+   | cabem agora | respeita as três regras do `06_recomendacao` ao mesmo tempo |
+   | restam nas 24 h | só a janela móvel (perda ≤ 3% de `V_ref` por dia) |
+   | até o Hct crítico | quantas até o Hct projetado cruzar o limiar do bebê |
+
+   Quando não cabe, a interface diz em quantas horas a janela reabre e
+   **recusa** a coleta — a regra é aplicada no servidor, não só escondendo o
+   botão.
+
+Dois gráficos acompanham o bebê desde o nascimento: o **hematócrito** contra a
+curva do limiar crítico (faixa rosa = zona de transfusão) e o **volume
+sanguíneo**, com `V_ref` subindo pelo crescimento e `V` caindo a cada punção e
+voltando em algumas horas (`TAU_V`), repondo plasma e não hemácias.
+
+A interface não tem modelo próprio: `clinico.py` traduz "paciente + coletas"
+para `02_balanco_volume_hemacias.simular` e `06_recomendacao.limites`. Nenhuma
+constante nova — tudo vem de `parametros.py`, inclusive o nome e a paleta da
+marca (`APP_NOME_1`, `APP_NOME_2`, `COR_*`).
+
+**Como a idade entra na conta.** O médico informa o peso de hoje e a semana de
+vida; o arquivo 02 integra desde o nascimento. Estimamos o peso ao nascer
+invertendo o ganho de `GANHO_PESO` g/kg/dia e simulamos do dia 0 até hoje — é
+isso que faz um bebê de 3 semanas já chegar com a queda fisiológica de Hct
+acumulada, em vez de começar sempre em `HCT0`. A simulação roda com
+`transfundir=False`: a tela **sinaliza** a indicação de transfusão em vez de
+transfundir sozinha.
+
+### Hematócrito crítico variável
+
+Os arquivos numerados usam `HCT_LIMIAR = 0.30`, valor único. A interface usa
+`fisiologia.hct_critico(peso)`, que interpola `HCT_CRIT_PESOS` e
+`HCT_CRIT_VALORES`: quanto menor o bebê, menos reserva e mais alto o limiar.
+
+| Peso | Hct crítico |
+|---|---|
+| ≤ 0,75 kg | 0,330 |
+| 1,00 kg | 0,310 |
+| 1,50 kg | 0,280 |
+| ≥ 2,50 kg | 0,250 |
+
+Como o peso cresce na internação, **o limiar cai com o tempo**. `06_recomendacao`
+aceita um *callable* em `limite_Hct` para reavaliar o limiar a cada passo da
+projeção, já que o bebê cresce durante ela.
+
+> Âncoras marcadas `TODO`. A literatura (PINT, ETTNO) indexa o limiar pela
+> **idade pós-natal** e pelo **suporte respiratório**, não pelo peso; aqui o
+> peso entra como proxy de maturidade. Valores centrados em `HCT_LIMIAR` no
+> peso de referência, para seguirem comparáveis aos dos arquivos numerados.
+
+### Onde os dados ficam
+
+`armazem.py` tem duas implementações com a mesma interface, e `escolher()`
+decide sozinho:
+
+| Quando | Armazém |
+|---|---|
+| sem `SUPABASE_URL` no ambiente | arquivo local `dados_clinicos.json` |
+| com as chaves definidas | Postgres do Supabase (ver `interface/esquema.sql`) |
+
+Assim o projeto roda offline (apresentação sem internet) e hospedado, sem
+trocar uma linha de `clinico.py`.
+
+**Configurar o Supabase:** rode `interface/esquema.sql` no *SQL Editor* do
+painel; copie *Project URL* e a chave **secreta** em *Project Settings → API*;
+crie um `.env` na raiz (modelo em `.env.exemplo`, e o `.env` está no
+`.gitignore`):
+
+```
+SUPABASE_URL=https://<id>.supabase.co
+SUPABASE_SERVICE_KEY=<a chave secreta>
+```
+
+Conferir: `python interface/supabase_db.py`.
+
+> A chave secreta ignora as políticas de RLS — só pode viver no servidor, nunca
+> no `interface.html` nem num arquivo versionado. O `esquema.sql` liga RLS **sem
+> criar política nenhuma**: o padrão vira "nega tudo", então a chave pública
+> (que aparece em qualquer navegador) não lê nada.
+
+### Hospedar no Render
+
+*Web Service* apontando para este repositório:
+
+| Campo | Valor |
+|---|---|
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `python app.py` |
+| Environment | `SUPABASE_URL` e `SUPABASE_SERVICE_KEY` |
+
+O `app.py` lê `PORT` e `HOST` do ambiente e força `MPLBACKEND=Agg` antes de
+importar `clinico` — sem isso o matplotlib, que vem junto pelo arquivo 02,
+trava num servidor sem tela.
+
+> No Render o Supabase é obrigatório: o disco de lá é descartável e zera a cada
+> deploy. No plano grátis o serviço hiberna após ~15 min sem acesso e demora
+> ~1 min para acordar; as sessões de login ficam em memória, então todo deploy
+> desloga todo mundo.
 
 ## Saída esperada
 
