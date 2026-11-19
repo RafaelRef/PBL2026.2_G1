@@ -45,6 +45,11 @@ PAGINA = RAIZ / "interface" / "interface.html"
 MAX_CORPO = 64 * 1024          # nenhum pedido legitimo chega perto disso
 ROTA_PACIENTE = re.compile(r"^/api/pacientes/(\d+)$")
 ROTA_COLETAS = re.compile(r"^/api/pacientes/(\d+)/coletas$")
+ROTA_TRANSF = re.compile(r"^/api/pacientes/(\d+)/transfusoes$")
+
+# Logotipo do grupo. Se o arquivo nao existir, a pagina cai no desenho SVG
+# embutido -- entao o site nunca aparece sem marca.
+LOGO = RAIZ / "interface" / "marca.png"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -93,6 +98,10 @@ class Handler(BaseHTTPRequestHandler):
             if self.path in ("/", "/index.html", "/interface.html"):
                 return self._responder(200, PAGINA.read_bytes(),
                                        "text/html; charset=utf-8")
+            if self.path == "/marca.png":
+                if not LOGO.exists():
+                    return self._responder(404, dict(erro="sem logotipo"))
+                return self._responder(200, LOGO.read_bytes(), "image/png")
             if self.path == "/api/config":
                 return self._responder(200, dict(
                     exames=clinico.catalogo_exames(),
@@ -102,9 +111,13 @@ class Handler(BaseHTTPRequestHandler):
                     margem_volume=P.MARGEM_VOLUME,
                     horizonte=P.HORIZONTE_ESPERA,
                     crescimento=clinico.crescimento(),
+                    transfusao=dict(ml_por_kg=P.TRANSF_ML_KG,
+                                    hct_concentrado=P.HCT_CONCENTRADO),
+                    paleta=clinico.paleta(),
                     marca=dict(nome1=P.APP_NOME_1, nome2=P.APP_NOME_2,
                                subtitulo=P.APP_SUBTITULO,
-                               rodape=P.APP_RODAPE)))
+                               rodape=P.APP_RODAPE,
+                               logotipo=LOGO.exists())))
             if self.path == "/api/pacientes":
                 self._usuario()
                 return self._responder(200, dict(
@@ -150,7 +163,14 @@ class Handler(BaseHTTPRequestHandler):
             if m:
                 self._usuario()
                 return self._responder(201, clinico.registrar_coleta(
-                    int(m.group(1)), corpo.get("exame")))
+                    int(m.group(1)), corpo.get("exame"),
+                    forcar=bool(corpo.get("forcar"))))
+
+            m = ROTA_TRANSF.match(self.path)
+            if m:
+                usuario = self._usuario()
+                return self._responder(201, clinico.registrar_transfusao(
+                    int(m.group(1)), usuario))
 
             self._responder(404, dict(erro="Rota não encontrada."))
         except clinico.ErroClinico as e:

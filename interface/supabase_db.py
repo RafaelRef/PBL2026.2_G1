@@ -103,6 +103,11 @@ def pedir(metodo, caminho, corpo=None, params=None, prefer=None):
             msg = json.loads(detalhe).get("message", detalhe)
         except ValueError:
             msg = detalhe
+        baixo = msg.lower()
+        if ("schema cache" in baixo or "does not exist" in baixo
+                or "relationship" in baixo):
+            msg += ("  -- o banco esta desatualizado: rode "
+                    "interface/esquema.sql no SQL Editor do Supabase.")
         raise ErroSupabase(f"Supabase respondeu {e.code}: {msg}") from None
     except urllib.error.URLError as e:
         raise ErroSupabase(f"Nao consegui falar com o Supabase: {e.reason}") from None
@@ -121,7 +126,7 @@ def inserir(tabela, linha):
 def testar():
     """Checagem de fumaca: as tabelas existem e respondem?"""
     faltando = []
-    for tabela in ("usuarios", "pacientes", "coletas"):
+    for tabela in ("usuarios", "pacientes", "coletas", "transfusoes"):
         try:
             selecionar(tabela, {"select": "count", "limit": "1"})
         except ErroSupabase as e:

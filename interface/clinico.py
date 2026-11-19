@@ -164,13 +164,20 @@ def listar_pacientes():
             semana_vida=a["semana_vida"], peso=a["peso"], Hct=a["Hct"],
             V_ref=a["V_ref"], hct_limiar=a["hct_limiar"],
             coletas=len(pac["coletas"]),
+            transfusoes=a["n_transfusoes"],
             disponivel=a["disponivel"],
             transfusao_indicada=a["transfusao_indicada"]))
     return saida
 
 
-def registrar_coleta(pid, exame):
-    """Registra a puncao. Recusa o que fura qualquer uma das tres regras."""
+def registrar_coleta(pid, exame, forcar=False):
+    """Registra a puncao.
+
+    Sem `forcar`, recusa o que fura qualquer uma das tres regras e devolve
+    409 com o motivo. Com `forcar=True`, registra assim mesmo e marca a
+    coleta: existe exame de urgencia, e a decisao de furar o limite e' do
+    medico, nao do modelo. O registro guarda que foi consciente.
+    """
     if exame not in P.EXAMES:
         raise ErroClinico("Tipo de exame desconhecido.")
     volume = P.EXAMES[exame]["volume"]
@@ -179,13 +186,30 @@ def registrar_coleta(pid, exame):
     with _TRAVA:
         pac = _buscar(pid)
         a = avaliar(pac)
-        if volume > a["disponivel"] + 1e-9:
+        cabe = volume <= a["disponivel"] + 1e-9
+        if not cabe and not forcar:
             raise ErroClinico(
                 f"{P.EXAMES[exame]['nome']} pede {volume:.2f} mL, mas só "
                 f"cabem {a['disponivel']:.2f} mL agora "
                 f"(regra que limita: {a['regra_limitante']}). "
                 f"{a['exames'][exame]['texto_espera']}", 409)
-        DADOS.criar_coleta(pid, exame, volume, a["hora_vida"])
+        DADOS.criar_coleta(pid, exame, volume, a["hora_vida"],
+                           forcada=not cabe)
+    return detalhar(pid)
+
+
+def registrar_transfusao(pid, usuario):
+    """Transfunde o concentrado de hemacias que o medico aceitou.
+
+    Volume = P.TRANSF_ML_KG por kg, com hematocrito P.HCT_CONCENTRADO. Nao
+    ha regra automatica: a interface simula com transfundir=False e so entra
+    o que esta registrado aqui.
+    """
+    with _TRAVA:
+        pac = _buscar(pid)
+        a = avaliar(pac)
+        volume = P.TRANSF_ML_KG * a["peso"]
+        DADOS.criar_transfusao(pid, volume, a["Hct"], a["hora_vida"], usuario)
     return detalhar(pid)
 
 
@@ -196,7 +220,9 @@ def detalhar(pid):
                               semana_vida_cadastro=pac["semana_vida"],
                               cadastrado_por=pac["cadastrado_por"],
                               cadastrado_em=pac["cadastrado_em"],
-                              coletas=list(reversed(pac["coletas"]))),
+                              coletas=list(reversed(pac["coletas"])),
+                              transfusoes=list(reversed(
+                                  pac.get("transfusoes", [])))),
                 avaliacao=avaliar(pac))
 
 
@@ -216,8 +242,11 @@ def avaliar(pac):
     """Estado de hoje + as tres regras + quantas coletas ainda cabem."""
     hora_vida, peso0 = _idade(pac)
     agenda = [(c["hora_vida"], c["volume"]) for c in pac["coletas"]]
+    # transfundir=False: o modelo nao transfunde sozinho na interface. So
+    # entram as transfusoes que o medico de fato aceitou.
+    transf = [(t["hora_vida"], t["volume"]) for t in pac.get("transfusoes", [])]
     r = bal.simular(agenda, dias=hora_vida / 24.0, peso0=peso0,
-                    transfundir=False)
+                    transfundir=False, agenda_transfusoes=transf)
     e = rec.estado_de(r, -1)
     hct_crit = fis.hct_critico(e["peso"])          # varia com o peso do dia
     L = rec.limites(e, fis.hct_critico)
@@ -252,6 +281,19 @@ def avaliar(pac):
             espera_h=(None if not math.isfinite(espera) else round(espera)),
             texto_espera=texto)
 
+    # o que uma transfusao faria agora, para a interface mostrar no modal
+    vt = P.TRANSF_ML_KG * e["peso"]
+    # Dois momentos, e os dois importam. Logo depois da transfusao o volume
+    # esta expandido (V + vt), entao o Hct sobe menos; em algumas horas o
+    # volume volta para V_ref (TAU_V) e o Hct sobe o resto. Mostrar so o
+    # segundo faria a tela parecer errada no minuto seguinte a transfusao.
+    M_depois = e["M"] + vt * P.HCT_CONCENTRADO
+    transfusao = dict(
+        volume=vt, ml_por_kg=P.TRANSF_ML_KG, hct_concentrado=P.HCT_CONCENTRADO,
+        hct_depois_imediato=M_depois / (e["V"] + vt),
+        hct_depois=M_depois / e["V_ref"],
+        indicada=e["Hct"] < hct_crit)
+
     return dict(
         hora_vida=hora_vida,
         dia_vida=hora_vida / 24.0,
@@ -270,6 +312,9 @@ def avaliar(pac):
         regra_limitante=nomes[limitante],
         disponivel=disponivel,
         exames=exames,
+        transfusao=transfusao,
+        n_transfusoes=len(pac.get("transfusoes", [])),
+        transfundido_total=float(r["transf_V"]),
         serie=_serie(r))
 
 
@@ -291,6 +336,12 @@ def _serie(r, pontos=400):
 def onde_estao_os_dados():
     """Texto curto para o servidor imprimir ao subir."""
     return DADOS.nome
+
+
+def paleta():
+    """Cores da identidade visual. O CSS tem os mesmos valores como reserva
+    para a pagina aberta sem servidor, mas quem manda e' parametros.py."""
+    return {n.lower(): getattr(P, n) for n in dir(P) if n.startswith("COR_")}
 
 
 def crescimento():

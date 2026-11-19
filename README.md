@@ -23,6 +23,7 @@ PBL2026.2_G1/
 ├── app.py                           servidor da interface clínica (BabyCare Hemo)
 ├── interface/                       interface web para o médico
 │   ├── interface.html               a tela (HTML/CSS/JS, sem dependência externa)
+│   ├── marca.png                    logotipo do grupo (opcional; sem ele, um SVG embutido)
 │   ├── clinico.py                   login, pacientes, coletas e as regras
 │   ├── armazem.py                   onde os dados ficam: arquivo local ou Supabase
 │   ├── supabase_db.py               cliente PostgREST (só biblioteca padrão)
@@ -132,9 +133,23 @@ Fluxo: **login do médico → cadastro do paciente → lista → coletas**.
    | restam nas 24 h | só a janela móvel (perda ≤ 3% de `V_ref` por dia) |
    | até o Hct crítico | quantas até o Hct projetado cruzar o limiar do bebê |
 
-   Quando não cabe, a interface diz em quantas horas a janela reabre e
-   **recusa** a coleta — a regra é aplicada no servidor, não só escondendo o
-   botão.
+   O botão **nunca** fica desabilitado: existe exame de urgência, e a decisão
+   de furar o limite é do médico, não do modelo. Fora do limite ele fica
+   vermelho e abre um aviso dizendo qual regra está travando, o Hct atual, o
+   crítico daquele peso e quanto já saiu nas últimas 24 h. Confirmando, a
+   coleta é registrada e **marcada como fora do limite** no histórico — o
+   registro mostra que a decisão foi consciente.
+
+5. **Transfusão.** Quando o Hct cai abaixo do crítico, a interface abre um
+   modal perguntando se o médico quer transfundir. O modal mostra o volume
+   (`TRANSF_ML_KG` mL/kg), o hematócrito do concentrado (`HCT_CONCENTRADO`) e
+   os dois Hct esperados: logo depois, com o volume ainda expandido, e ao
+   estabilizar, quando o volume volta a `V_ref`. Também há um botão para
+   transfundir fora do limiar.
+
+   O modelo **não** transfunde sozinho na interface: `simular` roda com
+   `transfundir=False` e recebe em `agenda_transfusoes` só o que o médico
+   aceitou. A regra automática continua existindo para os arquivos numerados.
 
 Dois gráficos acompanham o bebê desde o nascimento: o **hematócrito** contra a
 curva do limiar crítico (faixa rosa = zona de transfusão) e o **volume
@@ -144,7 +159,13 @@ voltando em algumas horas (`TAU_V`), repondo plasma e não hemácias.
 A interface não tem modelo próprio: `clinico.py` traduz "paciente + coletas"
 para `02_balanco_volume_hemacias.simular` e `06_recomendacao.limites`. Nenhuma
 constante nova — tudo vem de `parametros.py`, inclusive o nome e a paleta da
-marca (`APP_NOME_1`, `APP_NOME_2`, `COR_*`).
+marca (`APP_NOME_1`, `APP_NOME_2`, `COR_*`), que o servidor entrega em
+`/api/config` e a página aplica por cima do CSS. Trocar o nome ou uma cor é
+uma linha num arquivo só.
+
+O logotipo é `interface/marca.png`, servido em `/marca.png`. Se o arquivo não
+existir, a página desenha uma gotinha em SVG embutido — o site nunca aparece
+sem marca.
 
 **Como a idade entra na conta.** O médico informa o peso de hoje e a semana de
 vida; o arquivo 02 integra desde o nascimento. Estimamos o peso ao nascer
@@ -185,6 +206,10 @@ decide sozinho:
 |---|---|
 | sem `SUPABASE_URL` no ambiente | arquivo local `dados_clinicos.json` |
 | com as chaves definidas | Postgres do Supabase (ver `interface/esquema.sql`) |
+
+São quatro tabelas: `usuarios`, `pacientes`, `coletas` e `transfusoes`. O
+`esquema.sql` é idempotente (`if not exists`), então **rode-o de novo sempre
+que ele mudar** — ele também traz as migrações de colunas novas.
 
 Assim o projeto roda offline (apresentação sem internet) e hospedado, sem
 trocar uma linha de `clinico.py`.

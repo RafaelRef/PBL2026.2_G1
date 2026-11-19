@@ -49,3 +49,30 @@
     alter table public.usuarios  enable row level security;
     alter table public.pacientes enable row level security;
     alter table public.coletas   enable row level security;
+
+-- ---------------------------------------------------------------- transfusoes
+-- Transfusoes que o MEDICO aceitou. O modelo nao transfunde sozinho na
+-- interface (simular roda com transfundir=False): cada linha aqui e' uma
+-- decisao registrada, e entra na simulacao pela agenda_transfusoes.
+create table if not exists public.transfusoes (
+    id          bigint generated always as identity primary key,
+    paciente_id bigint           not null
+                references public.pacientes(id) on delete cascade,
+    volume      double precision not null,   -- mL de concentrado
+    hct_antes   double precision not null,   -- Hct no momento da decisao
+    hora_vida   double precision not null,   -- h desde o nascimento
+    decidida_por text            not null references public.usuarios(login),
+    em          timestamptz      not null default now()
+);
+
+create index if not exists transfusoes_por_paciente
+    on public.transfusoes (paciente_id);
+
+alter table public.transfusoes enable row level security;
+
+-- ---------------------------------------------------------------- migracao
+-- Para bancos criados antes da coleta forcada. Uma coleta "forcada" e' a que
+-- o medico registrou sabendo que furava uma das regras -- exame de urgencia.
+-- Fica marcada para o registro mostrar que a decisao foi consciente.
+alter table public.coletas
+    add column if not exists forcada boolean not null default false;

@@ -44,6 +44,7 @@ body{margin:0;background:var(--bg);color:var(--texto);
 /* ---------------------------------------------------------- marca */
 .marca{display:flex;align-items:center;gap:13px}
 .marca svg{width:44px;height:auto;flex:none}
+.marca img{max-height:58px;width:auto;display:block}
 .marca .nome{font-size:25px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
 .marca .nome .hemo{color:var(--sangue)}
 .marca .sub{font-size:13px;color:var(--fraco);line-height:1.3}
@@ -122,6 +123,28 @@ button.discreto{background:transparent;color:var(--fraco);border-color:var(--lin
 .chave{width:16px;height:0;border-top-width:2.5px;border-top-style:solid}
 svg.gr{display:block;width:100%;height:auto}
 
+/* ---------------------------------------------------------- modal */
+.cortina{position:fixed;inset:0;background:rgba(18,63,56,.45);display:flex;
+  align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--surface);border:1px solid var(--linha);
+  border-radius:var(--raio);padding:22px;max-width:470px;width:100%;
+  box-shadow:0 12px 44px rgba(18,63,56,.28)}
+.modal h3{font-size:17px;color:var(--texto);text-transform:none;
+  letter-spacing:0;margin:0 0 11px;font-weight:700}
+.modal p{margin:0 0 11px;font-size:14.5px}
+.modal .detalhe{background:var(--bg);border:1px solid var(--linha);
+  border-radius:10px;padding:13px;font-size:13.5px;margin:13px 0}
+.modal .detalhe div{display:flex;justify-content:space-between;gap:12px;
+  padding:3px 0}
+.modal .detalhe b{font-variant-numeric:tabular-nums}
+.modal .botoes{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;
+  flex-wrap:wrap}
+button.perigo{background:var(--sangue);border-color:var(--sangue);color:#fff}
+.exame.estourado{border-color:var(--alerta);
+  background:color-mix(in srgb,var(--sangue) 7%,var(--azul-claro))}
+:root[data-theme="dark"] .exame.estourado{
+  background:color-mix(in srgb,var(--sangue) 14%,transparent)}
+
 /* ---------------------------------------------------------- tabela */
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linha)}
@@ -134,8 +157,11 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 
   <div class="topo">
     <div class="marca">
-      <!-- gotinha do logotipo, desenhada em SVG para não depender de arquivo -->
-      <svg viewBox="0 0 64 76" role="img" aria-label="Logotipo: gotinha de sangue com rosto de bebê">
+      <!-- Logotipo do grupo. interface/marca.png é a arte oficial; o desenho
+           SVG abaixo só aparece se o arquivo não estiver no servidor. -->
+      <img id="marca-img" class="oculto" alt="">
+      <svg id="marca-svg" viewBox="0 0 64 76" role="img"
+           aria-label="Logotipo: gotinha de sangue com rosto de bebê">
         <path d="M32 3C32 3 8 33 8 48a24 24 0 0 0 48 0C56 33 32 3 32 3Z" fill="#D7263D"/>
         <path d="M19 46c-1-8 3-15 8-21" stroke="#F5B3C6" stroke-width="4.5"
               stroke-linecap="round" fill="none" opacity=".85"/>
@@ -144,7 +170,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
         <circle cx="32" cy="62" r="7" fill="#F5B3C6"/>
         <circle cx="32" cy="62" r="3.6" fill="#FDEBF0"/>
       </svg>
-      <div>
+      <div id="marca-texto">
         <div class="nome" id="marca-nome"></div>
         <div class="sub" id="marca-sub"></div>
       </div>
@@ -229,7 +255,8 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
-const estado = { token:null, nome:null, cfg:null, pacienteId:null, modoCadastro:false };
+const estado = { token:null, nome:null, cfg:null, pacienteId:null,
+                 modoCadastro:false, avaliacao:null, jaOferecido:new Set() };
 
 // ------------------------------------------------------------- API
 async function api(rota, opcoes = {}) {
@@ -300,6 +327,38 @@ function sair() {
   mostrar("tela-login");
 }
 $("#sair").onclick = sair;
+
+// ------------------------------------------------------------- modal
+/* Devolve uma Promise que resolve true/false. `corpo` é HTML já montado:
+   quem chama escapa o que vem de dados. */
+function modal({ titulo, corpo, ok = "Confirmar", cancelar = "Cancelar", perigo }) {
+  return new Promise(resolve => {
+    const c = document.createElement("div");
+    c.className = "cortina";
+    c.innerHTML = `<div class="modal" role="dialog" aria-modal="true"
+        aria-label="${esc(titulo)}">
+      <h3>${esc(titulo)}</h3>${corpo}
+      <div class="botoes">
+        <button class="discreto" data-r="0">${esc(cancelar)}</button>
+        <button class="${perigo ? "perigo" : ""}" data-r="1">${esc(ok)}</button>
+      </div></div>`;
+    const fechar = v => {
+      c.remove();
+      document.removeEventListener("keydown", tecla);
+      resolve(v);
+    };
+    const tecla = ev => { if (ev.key === "Escape") fechar(false); };
+    c.onclick = ev => { if (ev.target === c) fechar(false); };
+    for (const b of c.querySelectorAll("[data-r]"))
+      b.onclick = () => fechar(b.dataset.r === "1");
+    document.addEventListener("keydown", tecla);
+    document.body.appendChild(c);
+    c.querySelector('[data-r="1"]').focus();
+  });
+}
+
+const linha = (rotulo, valor) =>
+  `<div><span>${esc(rotulo)}</span><b>${esc(valor)}</b></div>`;
 
 // ------------------------------------------------------------- tema
 // Claro por padrão: é a identidade visual do grupo. A preferência fica no
@@ -376,6 +435,7 @@ $("#form-paciente").onsubmit = async ev => {
 
 // ------------------------------------------------------------- paciente
 $("#voltar").onclick = async () => {
+  estado.jaOferecido.delete(estado.pacienteId);
   estado.pacienteId = null;
   await carregarLista();
   mostrar("tela-pacientes");
@@ -389,12 +449,71 @@ async function abrirPaciente(id) {
   catch (e) { $("#detalhe").innerHTML = `<div class="aviso erro">${esc(e.message)}</div>`; }
 }
 
+/* O botão NUNCA fica desabilitado: existe exame de urgência, e a decisão de
+   furar o limite é do médico. Fora do limite, avisamos e pedimos confirmação;
+   a coleta vai marcada como forçada no registro. */
 async function coletar(exame) {
+  const a = estado.avaliacao, e = a.exames[exame];
+  let forcar = false;
+
+  if (!e.cabe_agora) {
+    const ok = await modal({
+      titulo: "Fora do limite seguro",
+      perigo: true,
+      ok: "Coletar mesmo assim",
+      cancelar: "Cancelar",
+      corpo: `<p>${esc(e.nome)} precisa de ${n2(e.volume)} mL, mas agora só
+          cabem <b>${n2(a.disponivel)} mL</b>.</p>
+        <div class="detalhe">
+          ${linha("Regra que limita", a.regra_limitante)}
+          ${linha("Hematócrito agora", n3(a.Hct))}
+          ${linha("Crítico para " + n2(a.peso) + " kg", n3(a.hct_limiar))}
+          ${linha("Coletado nas últimas 24 h", n2(a.coletado_24h) + " mL")}
+        </div>
+        <p>${esc(e.texto_espera)} Se o exame for urgente, pode coletar assim
+        mesmo — fica registrado que foi fora do limite.</p>`,
+    });
+    if (!ok) return;
+    forcar = true;
+  }
+
   for (const b of document.querySelectorAll(".exame button")) b.disabled = true;
   try {
     desenhar(await api(`/api/pacientes/${estado.pacienteId}/coletas`,
-                       { method: "POST", corpo: { exame } }));
-    avisar("#aviso-coleta", "Coleta registrada.", "ok");
+                       { method: "POST", corpo: { exame, forcar } }));
+    avisar("#aviso-coleta", forcar
+      ? "Coleta registrada fora do limite seguro."
+      : "Coleta registrada.", forcar ? "erro" : "ok");
+  } catch (e) {
+    await abrirPaciente(estado.pacienteId);
+    avisar("#aviso-coleta", e.message);
+  }
+}
+
+// ------------------------------------------------------------- transfusão
+async function oferecerTransfusao(automatico) {
+  const a = estado.avaliacao, t = a.transfusao;
+  const ok = await modal({
+    titulo: automatico ? "Hematócrito abaixo do crítico" : "Transfundir?",
+    ok: "Transfundir",
+    cancelar: automatico ? "Agora não" : "Cancelar",
+    corpo: `<p>O hematócrito está em <b>${n3(a.Hct)}</b>, abaixo do crítico de
+        <b>${n3(a.hct_limiar)}</b> para ${n2(a.peso)} kg. Deseja transfundir
+        concentrado de hemácias?</p>
+      <div class="detalhe">
+        ${linha("Volume", n1(t.volume) + " mL (" + t.ml_por_kg + " mL/kg)")}
+        ${linha("Hematócrito do concentrado", n2(t.hct_concentrado))}
+        ${linha("Hct logo depois", "~" + n3(t.hct_depois_imediato))}
+        ${linha("Hct ao estabilizar", "~" + n3(t.hct_depois))}
+      </div>
+      <p>Logo após a transfusão o volume está expandido, então o Hct sobe
+      menos; conforme o volume volta ao normal, ele sobe o resto.</p>`,
+  });
+  if (!ok) return;
+  try {
+    desenhar(await api(`/api/pacientes/${estado.pacienteId}/transfusoes`,
+                       { method: "POST" }));
+    avisar("#aviso-coleta", "Transfusão registrada.", "ok");
   } catch (e) {
     await abrirPaciente(estado.pacienteId);
     avisar("#aviso-coleta", e.message);
@@ -404,6 +523,7 @@ async function coletar(exame) {
 function desenhar(d) {
   const p = d.paciente, a = d.avaliacao, cfg = estado.cfg, cr = cfg.crescimento;
   const critico = a.transfusao_indicada;
+  estado.avaliacao = a;
 
   const metricas = [
     ["Peso hoje", n2(a.peso), `kg · nasceu com ${n2(a.peso_nascimento)}`],
@@ -416,8 +536,10 @@ function desenhar(d) {
       <div class="valor${r === "Hematócrito" ? (critico ? " alerta" : " seguro") : ""}">${v}
       <span class="unidade">${esc(u)}</span></div></div>`).join("");
 
+  // O botão nunca é desabilitado: urgência existe. Fora do limite ele muda
+  // de cor e pede confirmação antes de registrar.
   const exames = Object.values(a.exames).map(e => `
-    <div class="exame">
+    <div class="exame${e.cabe_agora ? "" : " estourado"}">
       <header><strong>${esc(e.nome)}</strong><span class="vol">${n2(e.volume)} mL</span></header>
       <div class="contagem">
         <div><div class="n ${e.cabe_agora ? "seguro" : "alerta"}">${e.cabe_agora}</div>
@@ -428,15 +550,29 @@ function desenhar(d) {
              <div class="leg">até o Hct<br>crítico</div></div>
       </div>
       <div class="nota" style="margin:0">${esc(e.texto_espera)}</div>
-      <button data-exame="${esc(e.chave)}" ${e.cabe_agora ? "" : "disabled"}>
-        Registrar ${esc(e.nome.toLowerCase())}</button>
+      <button data-exame="${esc(e.chave)}" class="${e.cabe_agora ? "" : "perigo"}">
+        ${e.cabe_agora ? "Registrar " + esc(e.nome.toLowerCase())
+                       : "Coletar fora do limite"}</button>
     </div>`).join("");
 
   const historico = p.coletas.length ? p.coletas.map(c => `
-    <tr><td>${esc(cfg.exames.find(x => x.chave === c.exame)?.nome || c.exame)}</td>
+    <tr><td>${esc(cfg.exames.find(x => x.chave === c.exame)?.nome || c.exame)}
+          ${c.forcada ? ` <span class="alerta">· fora do limite</span>` : ""}</td>
         <td class="num">${n2(c.volume)} mL</td>
         <td class="num">dia ${n1(c.hora_vida / 24)} de vida</td></tr>`).join("")
     : `<tr><td colspan="3" class="vazio">Nenhuma coleta registrada.</td></tr>`;
+
+  const transfusoes = (p.transfusoes || []).length
+    ? `<div class="cartao">
+        <h2>Transfusões</h2>
+        <table><thead><tr><th>Volume</th><th class="num">Hct antes</th>
+          <th class="num">Quando</th></tr></thead><tbody>
+          ${p.transfusoes.map(t => `<tr>
+            <td>${n1(t.volume)} mL de concentrado</td>
+            <td class="num">${n3(t.hct_antes)}</td>
+            <td class="num">dia ${n1(t.hora_vida / 24)} de vida</td></tr>`).join("")}
+        </tbody></table></div>`
+    : "";
 
   $("#detalhe").innerHTML = `
     <div class="cartao">
@@ -448,9 +584,16 @@ function desenhar(d) {
         (${(100 * a.frac_coletado).toFixed(1)}% do volume inicial)
       </div>
       <div class="grade">${metricas}</div>
-      ${critico ? `<div class="aviso erro">Hematócrito abaixo do crítico
-        de ${n3(a.hct_limiar)} para ${n2(a.peso)} kg — transfusão indicada.
-        Novas coletas estão bloqueadas.</div>` : ""}
+      ${critico ? `<div class="aviso erro">
+        Hematócrito abaixo do crítico de ${n3(a.hct_limiar)} para
+        ${n2(a.peso)} kg — transfusão indicada.
+        <div style="margin-top:11px"><button id="btn-transfundir">
+          Transfundir ${n1(a.transfusao.volume)} mL</button></div>
+      </div>` : `<div class="nota">
+        ${a.n_transfusoes} transfusão(ões) até agora${a.n_transfusoes
+          ? ", " + n1(a.transfundido_total) + " mL no total" : ""} ·
+        <a href="#" id="btn-transfundir" style="color:var(--acao)">transfundir
+        mesmo assim</a></div>`}
     </div>
 
     <div class="cartao">
@@ -464,13 +607,6 @@ function desenhar(d) {
       ${legenda([["--dado-sangue", "Hct do bebê", false],
                  ["--dado-sangue", "limiar crítico (cai com o peso)", true]])}
       ${graficoHct(a)}
-      <div class="nota">O limiar crítico não é fixo: vem de
-      <code>fisiologia.hct_critico(peso)</code> e desce conforme o bebê cresce
-      (${n3(hctCritico(a.peso_nascimento))} ao nascer →
-      ${n3(a.hct_limiar)} hoje). A queda do Hct é a anemia fisiológica do
-      modelo — a produção de hemácias não acompanha o crescimento — e cada
-      punção acelera essa queda. Hemácias destruídas com meia-vida de
-      ${cr.vida_hemacia_dias} dias.</div>
     </div>
 
     <div class="cartao">
@@ -478,12 +614,9 @@ function desenhar(d) {
       ${legenda([["--dado-azul", "volume atual V", false],
                  ["--dado-tiffany", "volume de referência V_ref", true]])}
       ${graficoVolume(a, cr)}
-      <div class="nota">V_ref sobe porque o bebê cresce
-      (${cr.ganho_g_kg_dia} g/kg/dia × ${cr.vol_por_kg} mL/kg). Cada punção
-      derruba V na hora; o volume volta sozinho em algumas horas
-      (τ = ${cr.tau_v_h} h), repondo plasma, não hemácias — é por isso que o
-      Hct cai depois da coleta, e não durante.</div>
     </div>
+
+    ${transfusoes}
 
     <div class="cartao">
       <h2>Histórico de coletas</h2>
@@ -493,6 +626,15 @@ function desenhar(d) {
 
   for (const b of document.querySelectorAll(".exame button"))
     b.onclick = () => coletar(b.dataset.exame);
+  const bt = $("#btn-transfundir");
+  if (bt) bt.onclick = ev => { ev.preventDefault(); oferecerTransfusao(false); };
+
+  // Abaixo do crítico, oferece a transfusão sozinho -- uma vez por paciente
+  // por visita, para não reaparecer a cada coleta que o médico registre.
+  if (critico && !estado.jaOferecido.has(p.id)) {
+    estado.jaOferecido.add(p.id);
+    oferecerTransfusao(true);
+  }
 }
 
 // ------------------------------------------------------------- gráficos
@@ -594,6 +736,30 @@ function graficoVolume(a, cr) {
   $("#marca-nome").innerHTML = `${esc(m.nome1)} <span class="hemo">${esc(m.nome2)}</span>`;
   $("#marca-sub").textContent = m.subtitulo;
   $("#rodape").textContent = m.rodape;
+
+  // A paleta vive em parametros.py. Os valores no :root do CSS são só a
+  // reserva para a página aberta sem servidor; estes aqui mandam.
+  for (const [nome, cor] of Object.entries(estado.cfg.paleta || {})) {
+    const alvo = { cor_fundo_tiffany:"--tiffany-fundo", cor_tiffany_claro:"--tiffany-claro",
+      cor_verde_tiffany:"--tiffany", cor_azul_bebe_claro:"--azul-claro",
+      cor_azul_bebe:"--azul", cor_rosa_claro:"--rosa-claro", cor_rosa:"--rosa",
+      cor_sangue:"--sangue", cor_verde_escuro:"--verde-escuro" }[nome];
+    if (alvo) document.documentElement.style.setProperty(alvo, cor);
+  }
+
+  // Arte oficial do grupo. Ela já traz o nome e o subtítulo, então substitui
+  // o texto inteiro. Sem o arquivo, fica o desenho SVG + texto.
+  if (m.logotipo) {
+    const img = $("#marca-img");
+    img.alt = `${m.nome1} ${m.nome2} — ${m.subtitulo}`;
+    img.onload = () => {
+      img.classList.remove("oculto");
+      $("#marca-svg").classList.add("oculto");
+      $("#marca-texto").classList.add("oculto");
+    };
+    img.onerror = () => { /* mantém o SVG + texto */ };
+    img.src = "/marca.png";
+  }
 
   let tema = "light";
   try { tema = localStorage.getItem("bch.tema") || "light"; } catch (e) { /* idem */ }

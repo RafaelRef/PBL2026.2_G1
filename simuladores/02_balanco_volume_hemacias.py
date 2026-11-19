@@ -67,16 +67,26 @@ def producao_hemacias(Hct, peso0=P.PESO0):
 # ---------------------------------------------------------------- simulacao
 
 def simular(agenda, dias=P.DIAS, dt=P.DT_H, transfundir=True,
-            peso0=P.PESO0, Hct0=P.HCT0):
+            peso0=P.PESO0, Hct0=P.HCT0, agenda_transfusoes=None):
     """Integra V e M por `dias`. `agenda` e' uma lista [(hora, volume)] ou uma
     politica callable(estado) -> volume a coletar agora (estrategia D).
 
     `peso0`/`Hct0` sao o peso e o hematocrito no instante t = 0. Ficam
     parametrizados para a interface clinica simular um paciente real; com os
     valores padrao o comportamento e' exatamente o dos arquivos numerados.
+
+    Transfusoes entram por dois caminhos independentes:
+
+      transfundir=True     regra automatica -- transfunde sozinho sempre que
+                           o Hct cai abaixo de P.HCT_LIMIAR. E' o que os
+                           arquivos numerados usam.
+      agenda_transfusoes   lista [(hora, volume)] explicita. A interface
+                           clinica usa esta, com transfundir=False: quem
+                           decide transfundir e' o medico, nao o modelo.
     """
     politica = agenda if callable(agenda) else None
     pedidos = {} if politica else agenda_por_hora(agenda)
+    transf_pedidas = agenda_por_hora(agenda_transfusoes or [])
 
     peso = peso0
     V_ref = fis.volume_referencia(peso)
@@ -105,9 +115,11 @@ def simular(agenda, dias=P.DIAS, dt=P.DT_H, transfundir=True,
             coletas.append((t, vol))
             Hct = M / V
 
-        # --- transfusao: concentrado de hemacias, auto-limitada (sobe o Hct)
-        if transfundir and Hct < P.HCT_LIMIAR:
-            vt = P.TRANSF_ML_KG * peso
+        # --- transfusao: concentrado de hemacias (sobe o Hct)
+        vt = transf_pedidas.get(int(round(t)), 0.0)      # decidida pelo medico
+        if transfundir and Hct < P.HCT_LIMIAR:           # regra automatica
+            vt += P.TRANSF_ML_KG * peso
+        if vt > 0.0:
             V += vt
             M += vt * P.HCT_CONCENTRADO
             acc["transf_V"] += vt

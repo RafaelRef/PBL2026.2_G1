@@ -77,13 +77,20 @@ class ArmazemJSON:
             self._gravar(d)
         return d["usuarios"][login]
 
+    @staticmethod
+    def _completar(pac):
+        """Pacientes gravados antes das transfusoes nao tem a chave."""
+        pac.setdefault("coletas", [])
+        pac.setdefault("transfusoes", [])
+        return pac
+
     def listar_pacientes(self):
-        return self._ler()["pacientes"]
+        return [self._completar(p) for p in self._ler()["pacientes"]]
 
     def buscar_paciente(self, pid):
         for pac in self._ler()["pacientes"]:
             if pac["id"] == pid:
-                return pac
+                return self._completar(pac)
         return None
 
     def criar_paciente(self, nome, peso, semana_vida, cadastrado_por):
@@ -93,19 +100,27 @@ class ArmazemJSON:
             d["proximo_id"] = pid + 1
             pac = dict(id=pid, nome=nome, peso=peso, semana_vida=semana_vida,
                        cadastrado_por=cadastrado_por,
-                       cadastrado_em=_agora_iso(), coletas=[])
+                       cadastrado_em=_agora_iso(), coletas=[], transfusoes=[])
             d["pacientes"].append(pac)
             self._gravar(d)
         return pac
 
-    def criar_coleta(self, pid, exame, volume, hora_vida):
+    def criar_coleta(self, pid, exame, volume, hora_vida, forcada=False):
+        self._anexar(pid, "coletas", dict(exame=exame, volume=volume,
+                                          hora_vida=hora_vida,
+                                          forcada=forcada, em=_agora_iso()))
+
+    def criar_transfusao(self, pid, volume, hct_antes, hora_vida, decidida_por):
+        self._anexar(pid, "transfusoes", dict(
+            volume=volume, hct_antes=hct_antes, hora_vida=hora_vida,
+            decidida_por=decidida_por, em=_agora_iso()))
+
+    def _anexar(self, pid, lista, item):
         with self._trava:
             d = self._ler()
             for pac in d["pacientes"]:
                 if pac["id"] == pid:
-                    pac["coletas"].append(dict(exame=exame, volume=volume,
-                                               hora_vida=hora_vida,
-                                               em=_agora_iso()))
+                    pac.setdefault(lista, []).append(item)
                     self._gravar(d)
                     return
             raise KeyError(pid)
@@ -121,13 +136,14 @@ class ArmazemSupabase:
     """
 
     nome = "Supabase"
-    EMBUTIDO = "*,coletas(*)"
+    EMBUTIDO = "*,coletas(*),transfusoes(*)"
 
     @staticmethod
     def _arrumar(pac):
         """Normaliza a linha do Postgres para o formato que clinico.py espera."""
         pac = dict(pac)
-        pac["coletas"] = sorted(pac.get("coletas") or [],
+        for lista in ("coletas", "transfusoes"):
+            pac[lista] = sorted(pac.get(lista) or [],
                                 key=lambda c: c["hora_vida"])
         return pac
 
@@ -159,11 +175,18 @@ class ArmazemSupabase:
             nome=nome, peso=peso, semana_vida=semana_vida,
             cadastrado_por=cadastrado_por))
         pac["coletas"] = []
+        pac["transfusoes"] = []
         return pac
 
-    def criar_coleta(self, pid, exame, volume, hora_vida):
+    def criar_coleta(self, pid, exame, volume, hora_vida, forcada=False):
         supabase_db.inserir("coletas", dict(
-            paciente_id=pid, exame=exame, volume=volume, hora_vida=hora_vida))
+            paciente_id=pid, exame=exame, volume=volume,
+            hora_vida=hora_vida, forcada=forcada))
+
+    def criar_transfusao(self, pid, volume, hct_antes, hora_vida, decidida_por):
+        supabase_db.inserir("transfusoes", dict(
+            paciente_id=pid, volume=volume, hct_antes=hct_antes,
+            hora_vida=hora_vida, decidida_por=decidida_por))
 
 
 # ------------------------------------------------------------- escolha
