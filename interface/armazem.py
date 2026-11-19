@@ -83,7 +83,6 @@ class ArmazemJSON:
         pac.setdefault("coletas", [])
         pac.setdefault("transfusoes", [])
         pac.setdefault("dias_extra", 0.0)
-        pac.setdefault("suporte_respiratorio", False)
         pac.setdefault("idade_gestacional", P.IG_PADRAO)
         pac.setdefault("reserva", P.RESERVA_PADRAO)
         return pac
@@ -98,7 +97,7 @@ class ArmazemJSON:
         return None
 
     def criar_paciente(self, nome, peso, semana_vida, cadastrado_por,
-                       suporte=False, ig=P.IG_PADRAO, reserva=P.RESERVA_PADRAO):
+                       ig=P.IG_PADRAO, reserva=P.RESERVA_PADRAO):
         with self._trava:
             d = self._ler()
             pid = d["proximo_id"]
@@ -107,7 +106,6 @@ class ArmazemJSON:
                        cadastrado_por=cadastrado_por,
                        cadastrado_em=_agora_iso(), coletas=[],
                        transfusoes=[], dias_extra=0.0,
-                       suporte_respiratorio=suporte,
                        idade_gestacional=ig, reserva=reserva)
             d["pacientes"].append(pac)
             self._gravar(d)
@@ -132,9 +130,6 @@ class ArmazemJSON:
                     self._gravar(d)
                     return
             raise KeyError(pid)
-
-    def definir_suporte(self, pid, suporte):
-        self.definir_campo(pid, "suporte_respiratorio", bool(suporte))
 
     def apagar_paciente(self, pid):
         with self._trava:
@@ -186,7 +181,6 @@ class ArmazemSupabase:
             pac[lista] = sorted(pac.get(lista) or [],
                                 key=lambda c: c["hora_vida"])
         pac["dias_extra"] = pac.get("dias_extra") or 0.0
-        pac["suporte_respiratorio"] = bool(pac.get("suporte_respiratorio"))
         pac["idade_gestacional"] = pac.get("idade_gestacional") or P.IG_PADRAO
         pac["reserva"] = pac.get("reserva") or P.RESERVA_PADRAO
         return pac
@@ -215,10 +209,10 @@ class ArmazemSupabase:
         return self._arrumar(r[0]) if r else None
 
     def criar_paciente(self, nome, peso, semana_vida, cadastrado_por,
-                       suporte=False, ig=P.IG_PADRAO, reserva=P.RESERVA_PADRAO):
+                       ig=P.IG_PADRAO, reserva=P.RESERVA_PADRAO):
         pac = supabase_db.inserir("pacientes", dict(
             nome=nome, peso=peso, semana_vida=semana_vida,
-            cadastrado_por=cadastrado_por, suporte_respiratorio=suporte,
+            cadastrado_por=cadastrado_por,
             idade_gestacional=ig, reserva=reserva))
         pac["coletas"] = []
         pac["transfusoes"] = []
@@ -244,9 +238,6 @@ class ArmazemSupabase:
 
     def definir_campo(self, pid, campo, valor):
         supabase_db.atualizar("pacientes", {"id": f"eq.{pid}"}, {campo: valor})
-
-    def definir_suporte(self, pid, suporte):
-        self.definir_campo(pid, "suporte_respiratorio", bool(suporte))
 
     def apagar_paciente(self, pid):
         # coletas e transfusoes somem junto: as chaves estrangeiras do

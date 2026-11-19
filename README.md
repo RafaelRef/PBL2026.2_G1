@@ -236,6 +236,15 @@ A tela do paciente mostra o Windkessel acoplado, não só o balanço de volume:
   dos objetivos do relatório: *como a reserva cardiovascular influencia a
   resposta à perda sanguínea?*
 
+> **Suporte respiratório ficou de fora, de propósito.** A diretriz separa os
+> limiares entre quem depende de suporte e quem não depende. Para o
+> simulador reproduzir a *causa* disso — e não só a conclusão — `SAO2` e
+> `PAO2` teriam de depender do suporte, e hoje são fixos. Metade do
+> mecanismo seria pior que nenhum, então adotamos a coluna "com suporte" da
+> diretriz (o prematuro de referência está em ventilação ou CPAP na maior
+> parte das primeiras semanas) e o acoplamento completo fica como próximo
+> passo do relatório final.
+
 Para o prematuro de referência no dia 21, a diferença é clínica: **25,6 mmHg
 sem compensação** (abaixo do limiar de 26, hipotensão) contra **28,6 com
 reserva baixa** e **31,1 com reserva alta**.

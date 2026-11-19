@@ -138,8 +138,7 @@ def _num(valor, campo, minimo, maximo):
     return x
 
 
-def criar_paciente(usuario, nome, peso, semana_vida, suporte=False,
-                   ig=None, reserva=None):
+def criar_paciente(usuario, nome, peso, semana_vida, ig=None, reserva=None):
     """Cadastra o bebe. O volume sanguineo sai de V_ref = 85 mL/kg."""
     nome = (nome or "").strip()
     if not nome:
@@ -148,8 +147,7 @@ def criar_paciente(usuario, nome, peso, semana_vida, suporte=False,
     semana = _num(semana_vida, "Semana de vida", 0, 52)
     ig = P.IG_PADRAO if ig in (None, "") else _num(ig, "Idade gestacional", 22, 42)
     reserva = reserva if reserva in P.RESERVAS else P.RESERVA_PADRAO
-    return DADOS.criar_paciente(nome, peso, semana, usuario, bool(suporte),
-                                ig, reserva)
+    return DADOS.criar_paciente(nome, peso, semana, usuario, ig, reserva)
 
 
 def _buscar(pid):
@@ -169,7 +167,6 @@ def listar_pacientes():
             V_ref=a["V_ref"], hct_limiar=a["hct_limiar"],
             coletas=len(pac["coletas"]),
             transfusoes=a["n_transfusoes"],
-            suporte_respiratorio=a["suporte_respiratorio"],
             PAM=a["hemo"]["PAM"], hipotenso=a["hemo"]["hipotenso"],
             disponivel=a["disponivel"],
             transfusao_indicada=a["transfusao_indicada"]))
@@ -216,13 +213,6 @@ def registrar_transfusao(pid, usuario):
         a = avaliar(pac)
         volume = P.TRANSF_ML_KG * a["peso"]
         DADOS.criar_transfusao(pid, volume, a["Hct"], a["hora_vida"], usuario)
-    return detalhar(pid)
-
-
-def definir_suporte(pid, suporte):
-    """Liga ou desliga o suporte respiratorio -- muda o limiar transfusional."""
-    _buscar(pid)
-    DADOS.definir_suporte(pid, bool(suporte))
     return detalhar(pid)
 
 
@@ -292,12 +282,11 @@ def avaliar(pac):
     r = bal.simular(agenda, dias=hora_vida / 24.0, peso0=peso0,
                     transfundir=False, agenda_transfusoes=transf)
     e = rec.estado_de(r, -1)
-    # Deschmann 2024: o limiar depende da idade pos-natal e do suporte
-    # respiratorio. Como o bebe envelhece durante a projecao de 72 h de
-    # 06_recomendacao, passamos uma FUNCAO do estado, nao um numero.
-    suporte = bool(pac.get("suporte_respiratorio"))
-    limiar = lambda est: fis.hct_critico(est["dia"], suporte)
-    hct_crit = fis.hct_critico(e["dia"], suporte)
+    # Deschmann 2024: o limiar depende da idade pos-natal. Como o bebe
+    # envelhece durante a projecao de 72 h de 06_recomendacao, passamos uma
+    # FUNCAO do estado, nao um numero.
+    limiar = lambda est: fis.hct_critico(est["dia"])
+    hct_crit = fis.hct_critico(e["dia"])
     L = rec.limites(e, limiar)
     disponivel = rec.volume_disponivel(e, limiar)
 
@@ -369,7 +358,6 @@ def avaliar(pac):
         V=e["V"], V_ref=e["V_ref"], M=e["M"], Hct=e["Hct"],
         hct_limiar=hct_crit,
         hct_limiar_fixo=P.HCT_LIMIAR,
-        suporte_respiratorio=suporte,
         transfusao_indicada=e["Hct"] < hct_crit,
         coletado_24h=rec.coletado_em_24h(e),
         coletado_total=float(r["coletado"]),
@@ -384,7 +372,7 @@ def avaliar(pac):
         hemo=hemo,
         n_transfusoes=len(pac.get("transfusoes", [])),
         transfundido_total=float(r["transf_V"]),
-        serie=_serie(r, lambda dia: fis.hct_critico(dia, suporte), reserva))
+        serie=_serie(r, fis.hct_critico, reserva))
 
 
 def _serie(r, hct_crit_de, reserva, pontos=400):

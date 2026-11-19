@@ -47,7 +47,6 @@ ROTA_PACIENTE = re.compile(r"^/api/pacientes/(\d+)$")
 ROTA_COLETAS = re.compile(r"^/api/pacientes/(\d+)/coletas$")
 ROTA_TRANSF = re.compile(r"^/api/pacientes/(\d+)/transfusoes$")
 ROTA_AVANCAR = re.compile(r"^/api/pacientes/(\d+)/avancar$")
-ROTA_SUPORTE = re.compile(r"^/api/pacientes/(\d+)/suporte$")
 ROTA_RESERVA = re.compile(r"^/api/pacientes/(\d+)/reserva$")
 
 # Logotipo do grupo. Se o arquivo nao existir, a pagina cai no desenho SVG
@@ -161,7 +160,7 @@ class Handler(BaseHTTPRequestHandler):
                 usuario = self._usuario()
                 pac = clinico.criar_paciente(
                     usuario, corpo.get("nome"), corpo.get("peso"),
-                    corpo.get("semana_vida"), corpo.get("suporte"),
+                    corpo.get("semana_vida"),
                     corpo.get("ig"), corpo.get("reserva"))
                 return self._responder(201, clinico.detalhar(pac["id"]))
 
@@ -177,12 +176,6 @@ class Handler(BaseHTTPRequestHandler):
                 usuario = self._usuario()
                 return self._responder(201, clinico.registrar_transfusao(
                     int(m.group(1)), usuario))
-
-            m = ROTA_SUPORTE.match(self.path)
-            if m:
-                self._usuario()
-                return self._responder(200, clinico.definir_suporte(
-                    int(m.group(1)), corpo.get("suporte")))
 
             m = ROTA_RESERVA.match(self.path)
             if m:

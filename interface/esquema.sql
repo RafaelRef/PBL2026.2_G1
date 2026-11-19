@@ -87,11 +87,11 @@ alter table public.coletas
 alter table public.pacientes
     add column if not exists dias_extra double precision not null default 0;
 
--- Suporte respiratorio. Entra no limiar transfusional: Deschmann et al.
--- (2024) recomenda limiar mais alto para quem depende de suporte. Muda ao
--- longo da internacao, entao a interface deixa o medico alternar.
-alter table public.pacientes
-    add column if not exists suporte_respiratorio boolean not null default false;
+-- A coluna suporte_respiratorio existiu numa versao anterior e pode estar no
+-- banco de voces; o codigo nao a usa mais. Separar o cenario com e sem
+-- suporte exigiria tambem fazer SAO2 e PAO2 dependerem dele -- hoje sao
+-- fixos -- e esse acoplamento ficou como proximo passo do relatorio final.
+-- A coluna pode ficar onde esta, sem efeito, ou ser removida a mao.
 
 -- Idade gestacional ao nascer e reserva cardiovascular. A primeira define o
 -- limiar de hipotensao (regra de bolso: PAM em mmHg >= IG em semanas); a

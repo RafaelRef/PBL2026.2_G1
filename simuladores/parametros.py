@@ -115,22 +115,31 @@ HCT_LIMIAR      = 0.30        # -       limiar de indicacao             TODO
                               #         numerados. A interface clinica usa
                               #         fisiologia.hct_critico(peso), abaixo.
 
-# Limiar da interface clinica: varia com a IDADE POS-NATAL e com o SUPORTE
-# RESPIRATORIO, como na diretriz Deschmann et al. (2024), JAMA Netw Open,
-# que o relatorio ja cita. A diretriz publica limiares de HEMOGLOBINA por
-# semana; convertidos para hematocrito com HB_POR_HCT (Hb[g/dL] = Hct%/3):
+# Limiar da interface clinica: varia com a IDADE POS-NATAL, como na diretriz
+# Deschmann et al. (2024), JAMA Netw Open, que o relatorio ja cita. A
+# diretriz publica limiares de HEMOGLOBINA por semana; convertidos para
+# hematocrito com HB_POR_HCT (Hb[g/dL] = Hct%/3).
 #
-#   semana      Hb sem suporte -> Hct      Hb com suporte -> Hct
-#      1          10.0 g/dL       0.300       11.0 g/dL      0.330
-#      2           8.5 g/dL       0.255       10.0 g/dL      0.300
-#      3           7.0 g/dL       0.210        9.0 g/dL      0.270
+# A diretriz separa por SUPORTE RESPIRATORIO, com limiares mais altos para
+# quem depende dele. Adotamos a coluna COM suporte: o prematuro de
+# referencia (26 semanas, 800 g) esta em ventilacao ou CPAP na maior parte
+# das primeiras semanas.
+#
+#   semana      adotado (com suporte)     em ar ambiente (nao usado)
+#      1        11.0 g/dL -> 0.330        10.0 g/dL -> 0.300
+#      2        10.0 g/dL -> 0.300         8.5 g/dL -> 0.255
+#      3         9.0 g/dL -> 0.270         7.0 g/dL -> 0.210
+#
+# Separar os dois cenarios exigiria tambem fazer SAO2 e PAO2 dependerem do
+# suporte -- hoje sao fixos -- e esse acoplamento fica para o relatorio
+# final, como proximo passo. Sem ele, o suporte mexeria no limiar sem mexer
+# na oferta de oxigenio que o justifica.                            TODO
 #
 # A diretriz e' DISCRETA por semana; aqui interpolamos linearmente para o
 # limiar nao dar saltos no meio da projecao hora a hora de 06_recomendacao.
 # Fora das pontas vira patamar (antes da semana 1 e depois da semana 3).
-HCT_CRIT_SEMANAS      = (1.0, 2.0, 3.0)       # semana de vida
-HCT_CRIT_SEM_SUPORTE  = (0.300, 0.255, 0.210) # -   ar ambiente
-HCT_CRIT_COM_SUPORTE  = (0.330, 0.300, 0.270) # -   em suporte respiratorio
+HCT_CRIT_SEMANAS = (1.0, 2.0, 3.0)        # semana de vida
+HCT_CRIT_VALORES = (0.330, 0.300, 0.270)  # -
 MARGEM_HCT      = 0.03        # -       folga que a estrategia guiada mantem
                               #         acima do limiar (nao coletar o
                               #         paciente ate a transfusao)
