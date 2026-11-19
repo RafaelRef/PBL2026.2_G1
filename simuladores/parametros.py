@@ -16,7 +16,12 @@ Unidades:
 # SV [mL], C [mL/mmHg], R [mmHg.s/mL], Pv [mmHg], HR [bpm]
 ADULTO = dict(nome="Adulto", HR=70.0, SV=70.0, C=1.20, R=1.0, Pv=5.0,
               cor="#2a78d6")
-NEONATO = dict(nome="Neonato", HR=140.0, SV=5.0, C=0.13, R=3.6, Pv=3.0,
+# R calibrado para PAM basal de ~33 mmHg, o valor normativo ao nascer em
+# prematuros <28 semanas (Vesoulis et al., 2016: 25.7 +- 1.5 sem, 865 +- 201 g,
+# 11.9 milhoes de pontos por cateter umbilical). R e' o unico dos tres que se
+# pode mexer sem estragar o resto: mexer em SV derrubaria o debito cardiaco
+# para 143 mL/kg/min, fora da faixa neonatal de 200-230, e com ele a DO2.
+NEONATO = dict(nome="Neonato", HR=140.0, SV=5.0, C=0.13, R=2.57, Pv=3.0,
                cor="#eb6834")
 PACIENTES = [ADULTO, NEONATO]
 
@@ -50,7 +55,19 @@ GANHO_PROD      = 2.00        # -       resposta lenta a (HCT0 - Hct)      TODO
 PROD_MAX        = 1.20        # -       teto da producao
 
 # ------------------------------------------------ volume
-TAU_V = 6.0                   # h       volume volta para V_ref; hemacias nao
+# Duas constantes, nao uma. O volume volta para V_ref por caminhos diferentes
+# conforme esteja abaixo ou acima dele, e nao ha razao para serem iguais:
+#
+#   TAU_V       V < V_ref, depois de uma coleta. Refil transcapilar, rapido.
+#   TAU_EXCRECAO  V > V_ref, depois de uma transfusao. Excrecao renal, lenta,
+#                 e mais lenta ainda no prematuro, de funcao renal imatura.
+#                 E' por isso que sobrecarga de volume e' risco real da
+#                 transfusao -- com um tau unico de 6 h, esse risco sumia em
+#                 24 h no modelo.
+#
+# Com TAU_EXCRECAO = TAU_V o comportamento volta a ser o de antes.      TODO
+TAU_V        = 6.0            # h       reposicao apos coleta
+TAU_EXCRECAO = 24.0           # h       excrecao do excesso apos transfusao
 
 # ------------------------------------------------ coletas
 VOL_COLETA        = 0.80      # mL      coleta de rotina                TODO
@@ -129,7 +146,20 @@ FU         = 0.70             # -       Vu = FU * V_ref (volume nao estressado)
 SV_REL_MAX = 1.20             # -       teto de SV/SV0
 
 # ------------------------------------------------ 5.2 viscosidade (Poiseuille)
-K_MU = 2.5                    # -       mu = mu_plasma * exp(K_MU * Hct)  TODO
+# A forma exponencial mu = mu_plasma.exp(K_MU.Hct) so foi confirmada em
+# recem-nascidos ACIMA de Hct 42% (Pediatrics, 1984, 93 amostras). O modelo
+# percorre 45% -> 30%, ou seja, quase toda a simulacao acontece abaixo dessa
+# fronteira. Na faixa de interesse a relacao e' praticamente linear: num
+# estudo em prematuros a viscosidade acompanhou o Hct com r = 0.877 entre
+# 29% e 63%.
+#
+# Usamos entao a forma linear  mu(Hct) = mu_plasma + (mu_ref - mu_plasma).Hct/HCT0,
+# parametrizada pela fracao do plasma na viscosidade do sangue de referencia:
+#   MU_PLASMA_REL = mu_plasma / mu_sangue(HCT0)
+# com plasma neonatal ~1.18 cP (adulto 1.36) e sangue a Hct 45% ~4.2 cP. TODO
+MODELO_VISCOSIDADE = "linear"  # "linear" (padrao) ou "exponencial"
+MU_PLASMA_REL = 0.28          # -       mu_plasma / mu_sangue(HCT0)      TODO
+K_MU = 2.5                    # -       so usado se MODELO_VISCOSIDADE = exponencial
 
 # ------------------------------------------------ 5.3 barorreflexo
 # g_r  -> vasoconstricao (reduz o raio)

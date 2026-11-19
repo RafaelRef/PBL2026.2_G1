@@ -72,12 +72,27 @@ def sv_de_volume(V, V_ref, SV0):
 # ------------------------------------------------- 5.2 Hct -> viscosidade
 
 def viscosidade_relativa(Hct, Hct0=P.HCT0):
-    """mu(Hct)/mu(Hct0) com mu = mu_plasma.exp(K_MU.Hct).
+    """mu(Hct) / mu(Hct0), adimensional.
 
-    R e' linear em mu, mas NAO em Hct: a relacao viscosidade x hematocrito e'
-    exponencial no modelo e nao linear na realidade.
+    Duas formas, escolhidas por P.MODELO_VISCOSIDADE:
+
+      "linear"       mu = mu_plasma + (mu_ref - mu_plasma) . Hct/Hct0
+                     E' o padrao. Na faixa que o modelo percorre (45% -> 30%)
+                     a literatura neonatal mostra relacao praticamente linear
+                     com o hematocrito (r = 0.877 em prematuros, 29-63%).
+
+      "exponencial"  mu = mu_plasma . exp(K_MU . Hct)
+                     Forma classica, confirmada em recem-nascidos so ACIMA de
+                     Hct 42%. Mantida para comparacao e analise de
+                     sensibilidade.
+
+    R e' linear em mu; o que nao e' linear e' a dependencia de R no RAIO,
+    que entra como 1/r^4 em `hemodinamica`.
     """
-    return float(np.exp(P.K_MU * (Hct - Hct0)))
+    if P.MODELO_VISCOSIDADE == "exponencial":
+        return float(np.exp(P.K_MU * (Hct - Hct0)))
+    f = P.MU_PLASMA_REL
+    return float(f + (1.0 - f) * Hct / Hct0)
 
 
 # ------------------------------------------------- 5.3 barorreflexo

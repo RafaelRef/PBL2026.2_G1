@@ -208,6 +208,19 @@ projeção, já que o bebê cresce durante ela.
 > peso entra como proxy de maturidade. Valores centrados em `HCT_LIMIAR` no
 > peso de referência, para seguirem comparáveis aos dos arquivos numerados.
 
+### Ajustes do modelo apos conferencia com a literatura
+
+Tres parametros do relatorio parcial foram revistos contra as fontes:
+
+| | Antes | Agora | Por que |
+|---|---|---|---|
+| PAM basal | 45 mmHg | **33 mmHg** | Vesoulis et al. (2016) mede ~33 mmHg ao nascer em <28 semanas. Calibrado por `R` do `NEONATO`, o unico que preserva o debito cardiaco em 200 mL/kg/min e, com ele, a DO2 |
+| Viscosidade | `exp(K·Hct)` | **linear** | A forma exponencial so foi confirmada em recem-nascidos **acima** de Hct 42%; o modelo percorre 45% → 30%. Em prematuros a relacao e praticamente linear nessa faixa (r = 0,877 entre 29% e 63%) |
+| Reposicao de volume | τ = 6 h nos dois sentidos | **τ = 6 h / 24 h** | O mesmo τ repunha volume apos a coleta **e** drenava o excesso apos a transfusao. Sao mecanismos diferentes: refil transcapilar e excrecao renal, esta lenta no prematuro |
+
+`MODELO_VISCOSIDADE` alterna entre `"linear"` e `"exponencial"` para comparar
+as duas formas; `TAU_EXCRECAO = TAU_V` devolve o comportamento antigo.
+
 ### Onde os dados ficam
 
 `armazem.py` tem duas implementações com a mesma interface, e `escolher()`

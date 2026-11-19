@@ -49,7 +49,7 @@ def projetar(estado, horas, dt=P.DT_H, peso0=P.PESO0):
     t, V, M = estado["t_h"], estado["V"], estado["M"]
     peso, V_ref = estado["peso"], estado["V_ref"]
     for _ in range(int(round(horas / dt))):
-        V += dt * (V_ref - V) / P.TAU_V
+        V += dt * (V_ref - V) / (P.TAU_V if V < V_ref else P.TAU_EXCRECAO)
         M += (bal.producao_hemacias(M / V, peso0) - M / P.VIDA_HEMACIA) * dt / 24.0
         t += dt
         peso = fis.peso_no_dia(t / 24.0, peso0)

@@ -134,7 +134,10 @@ def simular(agenda, dias=P.DIAS, dt=P.DT_H, transfundir=True,
             break
 
         # --- avanco de dt horas
-        rep = dt * (V_ref - V) / P.TAU_V          # reposicao: so plasma, dilui
+        # reposicao: so plasma, dilui. Abaixo de V_ref e' refil transcapilar
+        # (rapido); acima, excrecao renal do excesso de uma transfusao (lenta)
+        tau = P.TAU_V if V < V_ref else P.TAU_EXCRECAO
+        rep = dt * (V_ref - V) / tau
         V += rep
         acc["reposto"] += rep
         prod = producao_hemacias(M / V, peso0) * dt / 24.0
