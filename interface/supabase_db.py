@@ -16,6 +16,7 @@ no servidor: nunca no interface.html, nunca num arquivo versionado.
 
 import json
 import os
+import re
 import ssl
 import urllib.error
 import urllib.parse
@@ -58,16 +59,41 @@ def configurado():
                 and os.environ.get("SUPABASE_SERVICE_KEY"))
 
 
+_AVISEI_URL = False
+
+
+def normalizar_url(url):
+    """Aceita a URL do painel e devolve a da API.
+
+    O painel do Supabase mostra https://supabase.com/dashboard/project/<id>
+    na barra de enderecos, e a URL da API e' https://<id>.supabase.co. Sao
+    telas diferentes e e' facil copiar a errada -- ate porque a certa fica
+    escondida em Project Settings > API. Como o id esta dentro das duas, a
+    conversao e' exata: convertemos e avisamos, em vez de quebrar.
+    """
+    url = (url or "").strip().rstrip("/")
+    m = re.search(r"/project/([a-z0-9]{20})", url)
+    if m:
+        return f"https://{m.group(1)}.supabase.co", True
+    return url, False
+
+
 def _credenciais():
+    global _AVISEI_URL
     carregar_env()
-    url = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+    url, convertida = normalizar_url(os.environ.get("SUPABASE_URL"))
     chave = os.environ.get("SUPABASE_SERVICE_KEY") or ""
     if not url or not chave:
         raise ErroSupabase("SUPABASE_URL ou SUPABASE_SERVICE_KEY nao definidos.")
-    if "/dashboard/" in url or not url.endswith(".supabase.co"):
+    if convertida and not _AVISEI_URL:
+        _AVISEI_URL = True
+        print("AVISO: SUPABASE_URL e' a URL do painel; usando "
+              f"{url} no lugar. Corrija a variavel de ambiente.", flush=True)
+    if not url.endswith(".supabase.co"):
         raise ErroSupabase(
-            "SUPABASE_URL parece ser a URL do painel. Use a de "
-            "Project Settings > API > Project URL (https://<id>.supabase.co).")
+            f"SUPABASE_URL ({url}) nao parece uma URL de projeto Supabase. "
+            "Use a de Project Settings > API > Project URL "
+            "(https://<id>.supabase.co).")
     return url, chave
 
 
