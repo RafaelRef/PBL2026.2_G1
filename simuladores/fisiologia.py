@@ -31,6 +31,20 @@ def peso_no_dia(dia, peso0=P.PESO0):
     return peso0 * np.exp(P.GANHO_PESO / 1000.0 * dia)
 
 
+def hct_critico(peso):
+    """Hematocrito critico [-] do bebe, pelo peso do dia.
+
+    Interpola linearmente as ancoras de P.HCT_CRIT_*; fora das pontas vira
+    patamar. Quanto menor o bebe, mais alto o limiar: menos reserva
+    cardiovascular para compensar a queda de oferta de oxigenio.
+
+    Como o peso cresce ao longo da internacao (P.GANHO_PESO), o limiar CAI
+    com o tempo -- a margem ate a transfusao se abre devagar, mesmo sem o
+    Hct subir.
+    """
+    return float(np.interp(peso, P.HCT_CRIT_PESOS, P.HCT_CRIT_VALORES))
+
+
 def windkessel_do_bebe(peso):
     """Parametros RC do prematuro, por escala alometrica simples.
 

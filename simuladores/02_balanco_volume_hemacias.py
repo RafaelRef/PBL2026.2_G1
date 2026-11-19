@@ -48,28 +48,39 @@ def agenda_rotina(vol=P.VOL_COLETA):
 
 # ---------------------------------------------------------------- hemacias
 
-def destruicao_basal():
-    """M0 / vida media [mL/dia] -- referencia para calibrar a producao."""
-    return P.HCT0 * fis.volume_referencia(P.PESO0) / P.VIDA_HEMACIA
+def destruicao_basal(peso0=P.PESO0):
+    """M0 / vida media [mL/dia] -- referencia para calibrar a producao.
+
+    Depende do tamanho do bebe: `peso0` e' o peso de nascimento, nao o peso
+    do dia. A interface clinica passa o peso do paciente cadastrado; os
+    arquivos numerados continuam usando o prematuro padrao P.PESO0.
+    """
+    return P.HCT0 * fis.volume_referencia(peso0) / P.VIDA_HEMACIA
 
 
-def producao_hemacias(Hct):
+def producao_hemacias(Hct, peso0=P.PESO0):
     """Eritropoiese: basal insuficiente + resposta lenta e limitada a Hct baixo."""
     frac = P.FRAC_PROD_BASAL + P.GANHO_PROD * max(0.0, P.HCT0 - Hct)
-    return destruicao_basal() * min(frac, P.PROD_MAX)
+    return destruicao_basal(peso0) * min(frac, P.PROD_MAX)
 
 
 # ---------------------------------------------------------------- simulacao
 
-def simular(agenda, dias=P.DIAS, dt=P.DT_H, transfundir=True):
+def simular(agenda, dias=P.DIAS, dt=P.DT_H, transfundir=True,
+            peso0=P.PESO0, Hct0=P.HCT0):
     """Integra V e M por `dias`. `agenda` e' uma lista [(hora, volume)] ou uma
-    politica callable(estado) -> volume a coletar agora (estrategia D)."""
+    politica callable(estado) -> volume a coletar agora (estrategia D).
+
+    `peso0`/`Hct0` sao o peso e o hematocrito no instante t = 0. Ficam
+    parametrizados para a interface clinica simular um paciente real; com os
+    valores padrao o comportamento e' exatamente o dos arquivos numerados.
+    """
     politica = agenda if callable(agenda) else None
     pedidos = {} if politica else agenda_por_hora(agenda)
 
-    peso = P.PESO0
+    peso = peso0
     V_ref = fis.volume_referencia(peso)
-    V, M = V_ref, P.HCT0 * V_ref
+    V, M = V_ref, Hct0 * V_ref
     V0, M0 = V, M
 
     n = int(round(dias * 24.0 / dt))
@@ -114,12 +125,12 @@ def simular(agenda, dias=P.DIAS, dt=P.DT_H, transfundir=True):
         rep = dt * (V_ref - V) / P.TAU_V          # reposicao: so plasma, dilui
         V += rep
         acc["reposto"] += rep
-        prod = producao_hemacias(M / V) * dt / 24.0
+        prod = producao_hemacias(M / V, peso0) * dt / 24.0
         destr = (M / P.VIDA_HEMACIA) * dt / 24.0
         M += prod - destr
         acc["produzido"] += prod
         acc["destruido"] += destr
-        peso = fis.peso_no_dia((t + dt) / 24.0)   # crescimento
+        peso = fis.peso_no_dia((t + dt) / 24.0, peso0)  # crescimento
         V_ref = fis.volume_referencia(peso)
 
     r = {k: np.array(v) for k, v in hist.items()}

@@ -5,3 +5,10 @@ __pycache__/
 
 # figura orfa do modelo anterior, mantida localmente so por historico
 /windkessel_rc_adulto_vs_neonato.png
+
+# interface clinica: dados e chaves locais -- nunca versionar
+dados_clinicos.json
+dados_clinicos.tmp
+.env
+.env.*
+!.env.exemplo

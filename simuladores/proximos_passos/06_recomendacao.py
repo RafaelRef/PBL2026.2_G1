@@ -44,15 +44,15 @@ def coletado_em_24h(estado):
     return sum(v for th, v in estado["historico"] if t - 24.0 < th <= t)
 
 
-def projetar(estado, horas, dt=P.DT_H):
+def projetar(estado, horas, dt=P.DT_H, peso0=P.PESO0):
     """Estado `horas` a frente sem novas coletas (mesmo avanco do arquivo 02)."""
     t, V, M = estado["t_h"], estado["V"], estado["M"]
     peso, V_ref = estado["peso"], estado["V_ref"]
     for _ in range(int(round(horas / dt))):
         V += dt * (V_ref - V) / P.TAU_V
-        M += (bal.producao_hemacias(M / V) - M / P.VIDA_HEMACIA) * dt / 24.0
+        M += (bal.producao_hemacias(M / V, peso0) - M / P.VIDA_HEMACIA) * dt / 24.0
         t += dt
-        peso = fis.peso_no_dia(t / 24.0)
+        peso = fis.peso_no_dia(t / 24.0, peso0)
         V_ref = fis.volume_referencia(peso)
     return dict(t_h=t, dia=t / 24.0, peso=peso, V=V, V_ref=V_ref, M=M,
                 Hct=M / V, historico=estado["historico"])
@@ -60,10 +60,21 @@ def projetar(estado, horas, dt=P.DT_H):
 
 # ---------------------------------------------------------------- regras
 
+def limiar_de(limite_Hct, estado):
+    """Resolve o limiar de Hct: numero fixo ou funcao do peso do dia.
+
+    A interface clinica passa `fisiologia.hct_critico`, que varia com o peso.
+    Como o bebe cresce durante a projecao, o limiar precisa ser reavaliado a
+    cada passo -- por isso aceitamos um callable, nao so um numero.
+    """
+    return limite_Hct(estado["peso"]) if callable(limite_Hct) else limite_Hct
+
+
 def limites(estado, limite_Hct=P.HCT_LIMIAR, margem_volume=P.MARGEM_VOLUME):
     """As tres regras, em mL. Negativo = regra ja violada."""
     V, M, V_ref = estado["V"], estado["M"], estado["V_ref"]
     Hct = M / V
+    limite_Hct = limiar_de(limite_Hct, estado)
     return dict(
         janela_24h=P.FRAC_MAX_24H * V_ref - coletado_em_24h(estado),
         # coletar v tira v.Hct de hemacias; depois o volume volta para V_ref
@@ -79,15 +90,18 @@ def volume_disponivel(estado, limite_Hct=P.HCT_LIMIAR,
 
 
 def tempo_ate_proxima_coleta(estado, volume_desejado,
-                             horizonte=P.HORIZONTE_ESPERA, dt=P.DT_H):
+                             horizonte=P.HORIZONTE_ESPERA, dt=P.DT_H,
+                             peso0=P.PESO0, limite_Hct=P.HCT_LIMIAR,
+                             margem_volume=P.MARGEM_VOLUME):
     """Horas de espera ate caber `volume_desejado`; inf se nao couber no
     horizonte. Procura hora a hora: a janela de 24 h abre sozinha quando as
     coletas antigas saem dela, e o Hct sobe devagar pela eritropoiese."""
-    if volume_disponivel(estado) >= volume_desejado:
+    if volume_disponivel(estado, limite_Hct, margem_volume) >= volume_desejado:
         return 0.0
     h = dt
     while h <= horizonte:
-        if volume_disponivel(projetar(estado, h, dt)) >= volume_desejado:
+        if volume_disponivel(projetar(estado, h, dt, peso0),
+                             limite_Hct, margem_volume) >= volume_desejado:
             return float(h)
         h += dt
     return float("inf")

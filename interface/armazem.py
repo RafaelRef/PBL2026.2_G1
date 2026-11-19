@@ -1,0 +1,181 @@
+"""armazem.py -- onde os dados ficam guardados.
+
+Duas implementacoes com a mesma interface:
+
+    ArmazemJSON      arquivo local (dados_clinicos.json) -- padrao, offline
+    ArmazemSupabase  Postgres do Supabase via PostgREST  -- quando ha chave
+
+`escolher()` decide sozinho: se SUPABASE_URL e SUPABASE_SERVICE_KEY estiverem
+no ambiente, usa o Supabase; senao, o arquivo. Isso mantem o projeto rodando
+sem internet (sala de aula, apresentacao) e hospedado (Render) sem trocar uma
+linha de clinico.py.
+
+Por que o Supabase e' necessario no Render: o disco de la e' descartavel --
+cada deploy ou reinicio zera o arquivo. O Postgres nao.
+"""
+
+import json
+import os
+import sys
+import threading
+from datetime import datetime, timezone
+from pathlib import Path
+
+RAIZ = Path(__file__).resolve().parent.parent
+_SIM = RAIZ / "simuladores"
+if str(_SIM) not in sys.path:
+    sys.path.insert(0, str(_SIM))
+
+import parametros as P
+import supabase_db
+
+
+class JaExiste(Exception):
+    """Login duplicado."""
+
+
+def _agora_iso():
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+# ------------------------------------------------------------- arquivo local
+
+class ArmazemJSON:
+    """Documento unico em disco. Simples e sem rede; nao sobrevive ao Render."""
+
+    nome = "arquivo local"
+
+    def __init__(self, caminho=None):
+        self.caminho = Path(caminho or RAIZ / P.ARQUIVO_DADOS)
+        self._trava = threading.Lock()
+
+    # -- baixo nivel
+    def _ler(self):
+        if not self.caminho.exists():
+            return dict(usuarios={}, pacientes=[], proximo_id=1)
+        with self.caminho.open(encoding="utf-8") as f:
+            return json.load(f)
+
+    def _gravar(self, dados):
+        """Grava num temporario e troca: nunca deixa o arquivo pela metade."""
+        tmp = self.caminho.with_suffix(".tmp")
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, self.caminho)
+
+    # -- interface
+    def buscar_usuario(self, login):
+        return self._ler()["usuarios"].get(login)
+
+    def criar_usuario(self, login, salt, hash_, nome):
+        with self._trava:
+            d = self._ler()
+            if login in d["usuarios"]:
+                raise JaExiste(login)
+            d["usuarios"][login] = dict(salt=salt, hash=hash_, nome=nome,
+                                        criado_em=_agora_iso())
+            self._gravar(d)
+        return d["usuarios"][login]
+
+    def listar_pacientes(self):
+        return self._ler()["pacientes"]
+
+    def buscar_paciente(self, pid):
+        for pac in self._ler()["pacientes"]:
+            if pac["id"] == pid:
+                return pac
+        return None
+
+    def criar_paciente(self, nome, peso, semana_vida, cadastrado_por):
+        with self._trava:
+            d = self._ler()
+            pid = d["proximo_id"]
+            d["proximo_id"] = pid + 1
+            pac = dict(id=pid, nome=nome, peso=peso, semana_vida=semana_vida,
+                       cadastrado_por=cadastrado_por,
+                       cadastrado_em=_agora_iso(), coletas=[])
+            d["pacientes"].append(pac)
+            self._gravar(d)
+        return pac
+
+    def criar_coleta(self, pid, exame, volume, hora_vida):
+        with self._trava:
+            d = self._ler()
+            for pac in d["pacientes"]:
+                if pac["id"] == pid:
+                    pac["coletas"].append(dict(exame=exame, volume=volume,
+                                               hora_vida=hora_vida,
+                                               em=_agora_iso()))
+                    self._gravar(d)
+                    return
+            raise KeyError(pid)
+
+
+# ------------------------------------------------------------- Supabase
+
+class ArmazemSupabase:
+    """Tabelas usuarios / pacientes / coletas (ver esquema.sql).
+
+    As coletas vem junto do paciente numa so chamada, pelo recurso embutido
+    do PostgREST (`select=*,coletas(*)`), que usa a chave estrangeira.
+    """
+
+    nome = "Supabase"
+    EMBUTIDO = "*,coletas(*)"
+
+    @staticmethod
+    def _arrumar(pac):
+        """Normaliza a linha do Postgres para o formato que clinico.py espera."""
+        pac = dict(pac)
+        pac["coletas"] = sorted(pac.get("coletas") or [],
+                                key=lambda c: c["hora_vida"])
+        return pac
+
+    def buscar_usuario(self, login):
+        r = supabase_db.selecionar("usuarios",
+                                   {"login": f"eq.{login}", "limit": "1"})
+        return r[0] if r else None
+
+    def criar_usuario(self, login, salt, hash_, nome):
+        try:
+            return supabase_db.inserir("usuarios", dict(
+                login=login, salt=salt, hash=hash_, nome=nome))
+        except supabase_db.ErroSupabase as e:
+            if "duplicate key" in str(e).lower() or "23505" in str(e):
+                raise JaExiste(login) from None
+            raise
+
+    def listar_pacientes(self):
+        return [self._arrumar(p) for p in supabase_db.selecionar(
+            "pacientes", {"select": self.EMBUTIDO, "order": "id.asc"})]
+
+    def buscar_paciente(self, pid):
+        r = supabase_db.selecionar("pacientes", {
+            "id": f"eq.{pid}", "select": self.EMBUTIDO, "limit": "1"})
+        return self._arrumar(r[0]) if r else None
+
+    def criar_paciente(self, nome, peso, semana_vida, cadastrado_por):
+        pac = supabase_db.inserir("pacientes", dict(
+            nome=nome, peso=peso, semana_vida=semana_vida,
+            cadastrado_por=cadastrado_por))
+        pac["coletas"] = []
+        return pac
+
+    def criar_coleta(self, pid, exame, volume, hora_vida):
+        supabase_db.inserir("coletas", dict(
+            paciente_id=pid, exame=exame, volume=volume, hora_vida=hora_vida))
+
+
+# ------------------------------------------------------------- escolha
+
+def escolher():
+    """Supabase se houver chave no ambiente; arquivo local caso contrario."""
+    if supabase_db.configurado():
+        return ArmazemSupabase()
+    return ArmazemJSON()
+
+
+if __name__ == "__main__":
+    a = escolher()
+    print(f"armazem em uso: {a.nome}")
+    print(f"pacientes: {len(a.listar_pacientes())}")
