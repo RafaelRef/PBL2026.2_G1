@@ -48,6 +48,7 @@ ROTA_COLETAS = re.compile(r"^/api/pacientes/(\d+)/coletas$")
 ROTA_TRANSF = re.compile(r"^/api/pacientes/(\d+)/transfusoes$")
 ROTA_AVANCAR = re.compile(r"^/api/pacientes/(\d+)/avancar$")
 ROTA_SUPORTE = re.compile(r"^/api/pacientes/(\d+)/suporte$")
+ROTA_RESERVA = re.compile(r"^/api/pacientes/(\d+)/reserva$")
 
 # Logotipo do grupo. Se o arquivo nao existir, a pagina cai no desenho SVG
 # embutido -- entao o site nunca aparece sem marca.
@@ -113,6 +114,8 @@ class Handler(BaseHTTPRequestHandler):
                     margem_volume=P.MARGEM_VOLUME,
                     horizonte=P.HORIZONTE_ESPERA,
                     crescimento=clinico.crescimento(),
+                    reservas={k: v["nome"] for k, v in P.RESERVAS.items()},
+                    ig_padrao=P.IG_PADRAO, reserva_padrao=P.RESERVA_PADRAO,
                     transfusao=dict(ml_por_kg=P.TRANSF_ML_KG,
                                     hct_concentrado=P.HCT_CONCENTRADO),
                     paleta=clinico.paleta(),
@@ -158,7 +161,8 @@ class Handler(BaseHTTPRequestHandler):
                 usuario = self._usuario()
                 pac = clinico.criar_paciente(
                     usuario, corpo.get("nome"), corpo.get("peso"),
-                    corpo.get("semana_vida"), corpo.get("suporte"))
+                    corpo.get("semana_vida"), corpo.get("suporte"),
+                    corpo.get("ig"), corpo.get("reserva"))
                 return self._responder(201, clinico.detalhar(pac["id"]))
 
             m = ROTA_COLETAS.match(self.path)
@@ -179,6 +183,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._usuario()
                 return self._responder(200, clinico.definir_suporte(
                     int(m.group(1)), corpo.get("suporte")))
+
+            m = ROTA_RESERVA.match(self.path)
+            if m:
+                self._usuario()
+                return self._responder(200, clinico.definir_reserva(
+                    int(m.group(1)), corpo.get("reserva")))
 
             m = ROTA_AVANCAR.match(self.path)
             if m:

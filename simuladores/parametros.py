@@ -164,12 +164,26 @@ K_MU = 2.5                    # -       so usado se MODELO_VISCOSIDADE = exponen
 # ------------------------------------------------ 5.3 barorreflexo
 # g_r  -> vasoconstricao (reduz o raio)
 # g_hr -> taquicardia
-SEM_COMPENSACAO = dict(nome="sem compensacao", g_r=0.0, g_hr=0.0, cor="0.55")
+SEM_COMPENSACAO = dict(nome="sem compensação", g_r=0.0, g_hr=0.0, cor="0.55")
 RESERVA_ALTA  = dict(nome="reserva alta",  g_r=0.80, g_hr=0.50, cor="#2a78d6")
 RESERVA_BAIXA = dict(nome="reserva baixa", g_r=0.20, g_hr=0.10, cor="#eb6834")
 QUEDA_PAM_REL = 0.05          # -       "PAM baixa" = 5% abaixo da referencia
+
+
 R_REL_MIN  = 0.80             # -       r >= 0.80 * r0
 HR_REL_MAX = 1.30             # -       HR <= 1.30 * HR0
+# Limiar clinico de hipotensao neonatal, regra de bolso usual: PAM em mmHg
+# nao deve cair abaixo da idade gestacional em semanas. Para o prematuro de
+# referencia (26 semanas) da' 26 mmHg.                              TODO
+PAM_POR_SEMANA_IG = 1.0       # mmHg por semana de idade gestacional
+IG_PADRAO         = 26.0      # semanas  idade gestacional do paciente de referencia
+
+# Reserva cardiovascular que a interface clinica usa por padrao. "baixa" e' a
+# escolha conservadora para um prematuro extremo.
+RESERVAS = {"alta": RESERVA_ALTA, "baixa": RESERVA_BAIXA,
+            "nenhuma": SEM_COMPENSACAO}
+RESERVA_PADRAO = "baixa"
+
 ITER_MAX   = 60               # -       iteracoes do ponto fixo (bisseccao)
 TOL        = 1e-10            # -       tolerancia no erro de PAM
 

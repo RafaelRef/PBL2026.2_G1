@@ -64,9 +64,9 @@ h3{font-size:12.5px;margin:0 0 10px;color:var(--fraco);
 .cartao{background:var(--surface);border:1px solid var(--linha);
   border-radius:var(--raio);padding:20px;box-shadow:var(--sombra);margin-bottom:16px}
 label{display:block;font-size:13px;color:var(--fraco);margin:0 0 5px;font-weight:500}
-input{width:100%;padding:10px 12px;border:1px solid var(--linha);
+input,select{width:100%;padding:10px 12px;border:1px solid var(--linha);
   border-radius:9px;background:var(--bg);color:var(--texto);font:inherit}
-input:focus{outline:2px solid var(--dado-tiffany);outline-offset:-1px}
+input:focus,select:focus{outline:2px solid var(--dado-tiffany);outline-offset:-1px}
 .campos{display:grid;gap:13px;grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}
 button{padding:10px 17px;border:1px solid var(--acao);border-radius:9px;
   background:var(--acao);color:var(--acao-texto);font:inherit;font-weight:600;
@@ -102,6 +102,9 @@ button.discreto{background:transparent;color:var(--fraco);border-color:var(--lin
 .metrica{background:var(--tiffany-claro);border:1px solid var(--linha);
   border-radius:11px;padding:13px}
 .metrica .rotulo{font-size:12px;color:var(--fraco);margin-bottom:3px}
+.metrica.hemo{background:var(--rosa-claro)}
+:root[data-theme="dark"] .metrica.hemo{
+  background:color-mix(in srgb,var(--rosa) 10%,transparent)}
 .metrica .valor{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
 .metrica .unidade{display:block;font-size:12px;font-weight:500;
   color:var(--fraco);margin-top:2px}
@@ -260,10 +263,22 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
             <button type="submit" style="width:100%">Cadastrar</button>
           </div>
         </div>
-        <label class="suporte" id="rotulo-suporte" style="margin-top:13px;width:fit-content">
-          <input type="checkbox" id="p-suporte">
-          Em suporte respiratório
-        </label>
+        <div class="campos" style="margin-top:13px">
+          <div>
+            <label for="p-ig">Idade gestacional ao nascer (semanas)</label>
+            <input id="p-ig" type="number" step="0.5" min="22" max="42">
+          </div>
+          <div>
+            <label for="p-reserva">Reserva cardiovascular</label>
+            <select id="p-reserva"></select>
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <label class="suporte" id="rotulo-suporte" style="width:100%">
+              <input type="checkbox" id="p-suporte">
+              Em suporte respiratório
+            </label>
+          </div>
+        </div>
       </form>
       <div class="nota" id="previa-volume"></div>
       <div id="aviso-paciente"></div>
@@ -424,6 +439,8 @@ async function carregarLista() {
         </div>
         <div style="text-align:right">
           <div class="hct ${p.transfusao_indicada ? "alerta" : "seguro"}">Hct ${n3(p.Hct)}</div>
+          <div class="meta ${p.hipotenso ? "alerta" : ""}">PAM ${n1(p.PAM)} mmHg${
+            p.hipotenso ? " · hipotenso" : ""}</div>
           <div class="meta">${p.transfusao_indicada ? "transfusão indicada"
             : "crítico " + n3(p.hct_limiar) + " · cabem " + n2(p.disponivel) + " mL"}</div>
         </div>
@@ -467,9 +484,12 @@ function previaCadastro() {
     t += ` Hematócrito crítico com ${n1(semana)} semana(s)`
        + `${sup ? " em suporte respiratório" : " em ar ambiente"}: `
        + `${n3(hctCritico(semana * 7, sup))}.`;
+  const ig = parseFloat($("#p-ig").value) || estado.cfg.ig_padrao;
+  t += ` Limiar de hipotensão: PAM ${Math.round(ig)} mmHg (= IG em semanas).`;
   $("#previa-volume").textContent = t;
 }
-$("#p-peso").oninput = $("#p-semana").oninput = $("#p-suporte").onchange = previaCadastro;
+$("#p-peso").oninput = $("#p-semana").oninput = $("#p-ig").oninput =
+  $("#p-suporte").onchange = previaCadastro;
 
 /* Espelha fisiologia.hct_critico só para a prévia do cadastro; o valor que
    vale é sempre o que o servidor devolve. Deschmann et al. (2024). */
@@ -491,7 +511,8 @@ $("#form-paciente").onsubmit = async ev => {
     const r = await api("/api/pacientes", { method: "POST", corpo: {
       nome: $("#p-nome").value, peso: $("#p-peso").value,
       semana_vida: $("#p-semana").value,
-      suporte: $("#p-suporte").checked } });
+      suporte: $("#p-suporte").checked,
+      ig: $("#p-ig").value, reserva: $("#p-reserva").value } });
     $("#form-paciente").reset();
     $("#rotulo-suporte").classList.remove("ligado");
     $("#previa-volume").textContent = "";
@@ -617,6 +638,18 @@ function desenhar(d) {
       <div class="valor${r === "Hematócrito" ? (critico ? " alerta" : " seguro") : ""}">${v}
       <span class="unidade">${esc(u)}</span></div></div>`).join("");
 
+  const h = a.hemo;
+  const hemo = [
+    ["Pressão arterial média", n1(h.PAM), `mmHg · mínimo ${Math.round(h.pam_minima)}`,
+     h.hipotenso],
+    ["Sistólica / diastólica", `${Math.round(h.PAS)}/${Math.round(h.PAD)}`, "mmHg", false],
+    ["Débito cardíaco", Math.round(h.DC_kg), "mL/kg/min", false],
+    ["Oferta de O₂", n1(h.DO2_kg), "mL O₂/min/kg", false],
+    ["Hemoglobina", n1(h.Hb), "g/dL", false],
+  ].map(([r, v, u, mal]) => `<div class="metrica hemo"><div class="rotulo">${r}</div>
+      <div class="valor${mal ? " alerta" : ""}">${v}
+      <span class="unidade">${esc(u)}</span></div></div>`).join("");
+
   // O botão nunca é desabilitado: urgência existe. Fora do limite ele muda
   // de cor e pede confirmação antes de registrar.
   const exames = Object.values(a.exames).map(e => `
@@ -698,6 +731,30 @@ function desenhar(d) {
     </div>
 
     <div class="cartao">
+      <h2>Hemodinâmica</h2>
+      <div class="grade">${hemo}</div>
+      ${h.hipotenso ? `<div class="aviso erro">PAM de ${n1(h.PAM)} mmHg abaixo
+        do limiar de ${Math.round(h.pam_minima)} mmHg (idade gestacional de
+        ${n1(h.idade_gestacional)} semanas) — hipotensão.</div>` : ""}
+      <div class="tempo" style="border-top:none;padding-top:4px">
+        <span class="rotulo">Reserva cardiovascular:</span>
+        ${Object.entries(cfg.reservas).map(([k, nome]) =>
+          `<button class="${k === h.reserva ? "" : "secundario"}"
+                   data-reserva="${esc(k)}">${esc(nome)}</button>`).join("")}
+      </div>
+      <div class="nota">O barorreflexo responde à queda de PAM com
+      vasoconstrição e taquicardia. Agora: frequência ×${n2(h.hr_rel)},
+      raio dos vasos ×${n2(h.r_rel)}.</div>
+    </div>
+
+    <div class="cartao">
+      <h2>Pressão arterial no tempo</h2>
+      ${legenda([["--dado-tiffany", "PAM", false],
+                 ["--dado-sangue", "limiar de hipotensão (IG em semanas)", true]])}
+      ${graficoPAM(a)}
+    </div>
+
+    <div class="cartao">
       <h2>Registrar nova coleta</h2>
       <div class="exames">${exames}</div>
       <div id="aviso-coleta"></div>
@@ -729,8 +786,15 @@ function desenhar(d) {
     b.onclick = () => coletar(b.dataset.exame);
   const bt = $("#btn-transfundir");
   if (bt) bt.onclick = ev => { ev.preventDefault(); oferecerTransfusao(false); };
-  for (const b of document.querySelectorAll(".tempo button"))
+  for (const b of document.querySelectorAll(".tempo button[data-dias]"))
     b.onclick = () => avancar(Number(b.dataset.dias));
+  for (const b of document.querySelectorAll(".tempo button[data-reserva]"))
+    b.onclick = async () => {
+      try {
+        desenhar(await api(`/api/pacientes/${estado.pacienteId}/reserva`,
+                 { method: "POST", corpo: { reserva: b.dataset.reserva } }));
+      } catch (e) { await abrirPaciente(estado.pacienteId); avisar("#aviso-coleta", e.message); }
+    };
   const cs = $("#chk-suporte");
   if (cs) cs.onchange = async () => {
     try {
@@ -822,6 +886,21 @@ function graficoHct(a) {
   });
 }
 
+function graficoPAM(a) {
+  const limiar = a.serie.dia.map(() => a.hemo.pam_minima);
+  return grafico({
+    xs: a.serie.dia,
+    banda: { ys: limiar, cor: "--sangue", opacidade: 0.13 },
+    linhas: [{ ys: a.serie.PAM, cor: "--dado-tiffany" },
+             { ys: limiar, cor: "--dado-sangue", tracejada: true }],
+    formatar: v => Math.round(v),
+    unidade: "mmHg",
+    rotulo: `Pressão arterial média desde o nascimento, hoje em `
+          + `${n1(a.hemo.PAM)} mmHg, com limiar de hipotensão em `
+          + `${Math.round(a.hemo.pam_minima)} mmHg`,
+  });
+}
+
 function graficoVolume(a, cr) {
   return grafico({
     xs: a.serie.dia,
@@ -874,6 +953,11 @@ function graficoVolume(a, cr) {
   let tema = "light";
   try { tema = localStorage.getItem("bch.tema") || "light"; } catch (e) { /* idem */ }
   aplicarTema(tema);
+
+  $("#p-reserva").innerHTML = Object.entries(estado.cfg.reservas || {})
+    .map(([k, nome]) => `<option value="${esc(k)}"${
+      k === estado.cfg.reserva_padrao ? " selected" : ""}>${esc(nome)}</option>`).join("");
+  $("#p-ig").placeholder = estado.cfg.ig_padrao;
 
   const token = sessionStorage.getItem("bch.token");
   if (token) {

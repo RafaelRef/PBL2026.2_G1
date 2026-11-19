@@ -92,3 +92,11 @@ alter table public.pacientes
 -- longo da internacao, entao a interface deixa o medico alternar.
 alter table public.pacientes
     add column if not exists suporte_respiratorio boolean not null default false;
+
+-- Idade gestacional ao nascer e reserva cardiovascular. A primeira define o
+-- limiar de hipotensao (regra de bolso: PAM em mmHg >= IG em semanas); a
+-- segunda escolhe o ganho do barorreflexo em fisiologia.hemodinamica.
+alter table public.pacientes
+    add column if not exists idade_gestacional double precision not null default 26;
+alter table public.pacientes
+    add column if not exists reserva text not null default 'baixa';

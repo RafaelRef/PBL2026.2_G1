@@ -138,14 +138,18 @@ def _num(valor, campo, minimo, maximo):
     return x
 
 
-def criar_paciente(usuario, nome, peso, semana_vida, suporte=False):
+def criar_paciente(usuario, nome, peso, semana_vida, suporte=False,
+                   ig=None, reserva=None):
     """Cadastra o bebe. O volume sanguineo sai de V_ref = 85 mL/kg."""
     nome = (nome or "").strip()
     if not nome:
         raise ErroClinico("Informe o nome do paciente.")
     peso = _num(peso, "Peso (kg)", 0.3, 6.0)
     semana = _num(semana_vida, "Semana de vida", 0, 52)
-    return DADOS.criar_paciente(nome, peso, semana, usuario, bool(suporte))
+    ig = P.IG_PADRAO if ig in (None, "") else _num(ig, "Idade gestacional", 22, 42)
+    reserva = reserva if reserva in P.RESERVAS else P.RESERVA_PADRAO
+    return DADOS.criar_paciente(nome, peso, semana, usuario, bool(suporte),
+                                ig, reserva)
 
 
 def _buscar(pid):
@@ -166,6 +170,7 @@ def listar_pacientes():
             coletas=len(pac["coletas"]),
             transfusoes=a["n_transfusoes"],
             suporte_respiratorio=a["suporte_respiratorio"],
+            PAM=a["hemo"]["PAM"], hipotenso=a["hemo"]["hipotenso"],
             disponivel=a["disponivel"],
             transfusao_indicada=a["transfusao_indicada"]))
     return saida
@@ -218,6 +223,15 @@ def definir_suporte(pid, suporte):
     """Liga ou desliga o suporte respiratorio -- muda o limiar transfusional."""
     _buscar(pid)
     DADOS.definir_suporte(pid, bool(suporte))
+    return detalhar(pid)
+
+
+def definir_reserva(pid, reserva):
+    """Troca a reserva cardiovascular -- muda o ganho do barorreflexo."""
+    if reserva not in P.RESERVAS:
+        raise ErroClinico("Reserva desconhecida.")
+    _buscar(pid)
+    DADOS.definir_campo(pid, "reserva", reserva)
     return detalhar(pid)
 
 
@@ -316,6 +330,23 @@ def avaliar(pac):
             espera_h=(None if not math.isfinite(espera) else round(espera)),
             texto_espera=texto)
 
+    # --- hemodinamica: Windkessel com barorreflexo, no estado de agora
+    reserva = P.RESERVAS.get(pac.get("reserva") or P.RESERVA_PADRAO,
+                             P.RESERVAS[P.RESERVA_PADRAO])
+    ig = float(pac.get("idade_gestacional") or P.IG_PADRAO)
+    h = fis.hemodinamica(e["V"], e["V_ref"], e["Hct"], e["peso"], reserva)
+    # regra de bolso: PAM em mmHg nao deve cair abaixo da IG em semanas
+    pam_minima = ig * P.PAM_POR_SEMANA_IG
+    hemo = dict(
+        PAM=h["PAM"], PAS=h["PAS"], PAD=h["PAD"],
+        DC=h["DC"], DC_kg=h["DC"] / e["peso"],
+        DO2=h["DO2"], DO2_kg=h["DO2_kg"], Hb=h["Hb"],
+        hr_rel=h["hr_rel"], r_rel=h["r_rel"], erro=h["erro"],
+        reserva=pac.get("reserva") or P.RESERVA_PADRAO,
+        reserva_nome=reserva["nome"],
+        idade_gestacional=ig, pam_minima=pam_minima,
+        hipotenso=h["PAM"] < pam_minima)
+
     # o que uma transfusao faria agora, para a interface mostrar no modal
     vt = P.TRANSF_ML_KG * e["peso"]
     # Dois momentos, e os dois importam. Logo depois da transfusao o volume
@@ -350,19 +381,29 @@ def avaliar(pac):
         disponivel=disponivel,
         exames=exames,
         transfusao=transfusao,
+        hemo=hemo,
         n_transfusoes=len(pac.get("transfusoes", [])),
         transfundido_total=float(r["transf_V"]),
-        serie=_serie(r, lambda dia: fis.hct_critico(dia, suporte)))
+        serie=_serie(r, lambda dia: fis.hct_critico(dia, suporte), reserva))
 
 
-def _serie(r, hct_crit_de, pontos=400):
+def _serie(r, hct_crit_de, reserva, pontos=400):
     """Hct e volume por dia, reduzidos para o grafico da interface."""
     n = len(r["dia"])
     passo = max(1, n // pontos)
     idx = list(range(0, n, passo))
     if idx[-1] != n - 1:
         idx.append(n - 1)
-    return dict(dia=[round(float(r["dia"][i]), 4) for i in idx],
+    # a PAM sai do ponto fixo do barorreflexo; so nos pontos do grafico,
+    # nao nos ~670 passos horarios (custa ~30 ms assim)
+    pam = []
+    for i in idx:
+        h = fis.hemodinamica(float(r["V"][i]), float(r["V_ref"][i]),
+                             float(r["Hct"][i]), float(r["peso"][i]), reserva)
+        pam.append(round(h["PAM"], 2))
+
+    return dict(PAM=pam,
+                dia=[round(float(r["dia"][i]), 4) for i in idx],
                 Hct=[round(float(r["Hct"][i]), 5) for i in idx],
                 V=[round(float(r["V"][i]), 3) for i in idx],
                 V_ref=[round(float(r["V_ref"][i]), 3) for i in idx],

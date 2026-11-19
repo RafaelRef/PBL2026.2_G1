@@ -221,6 +221,28 @@ Tres parametros do relatorio parcial foram revistos contra as fontes:
 `MODELO_VISCOSIDADE` alterna entre `"linear"` e `"exponencial"` para comparar
 as duas formas; `TAU_EXCRECAO = TAU_V` devolve o comportamento antigo.
 
+### Hemodinâmica na interface
+
+A tela do paciente mostra o Windkessel acoplado, não só o balanço de volume:
+
+- **PAM, PAS/PAD, débito cardíaco, DO₂ e hemoglobina** no estado de agora,
+  saídos de `fisiologia.hemodinamica` — que resolve o ponto fixo do
+  barorreflexo por bisseção (~0,05 ms por chamada).
+- **Gráfico de pressão arterial** desde o nascimento, com a faixa de
+  hipotensão marcada. A regra de bolso é PAM em mmHg ≥ idade gestacional em
+  semanas, daí o campo **idade gestacional ao nascer** no cadastro.
+- **Seletor de reserva cardiovascular** (alta / baixa / sem compensação).
+  Trocar ali refaz a conta na hora, e é a resposta direta à pergunta (ii)
+  dos objetivos do relatório: *como a reserva cardiovascular influencia a
+  resposta à perda sanguínea?*
+
+Para o prematuro de referência no dia 21, a diferença é clínica: **25,6 mmHg
+sem compensação** (abaixo do limiar de 26, hipotensão) contra **28,6 com
+reserva baixa** e **31,1 com reserva alta**.
+
+A série de PAM é calculada só nos pontos do gráfico, não nos ~670 passos
+horários — o `detalhar()` inteiro fica em ~25 ms.
+
 ### Onde os dados ficam
 
 `armazem.py` tem duas implementações com a mesma interface, e `escolher()`
