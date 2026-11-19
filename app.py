@@ -160,22 +160,38 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    # O Render injeta PORT e espera que o processo escute em 0.0.0.0.
-    # Variavel de ambiente ganha do padrao; a flag na linha de comando ganha
-    # das duas.
+    # O Render injeta PORT mas NAO injeta HOST, e exige que o processo escute
+    # em 0.0.0.0 -- preso em 127.0.0.1 o proxy dele nunca alcanca o app e a
+    # requisicao fica pendurada. Entao PORT no ambiente significa "estou
+    # hospedado": o host padrao vira 0.0.0.0. Rodando na maquina do aluno,
+    # sem PORT, continua preso em 127.0.0.1 de proposito.
+    hospedado = bool(os.environ.get("PORT"))
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--porta", type=int,
                     default=int(os.environ.get("PORT") or P.PORTA))
-    ap.add_argument("--host", default=os.environ.get("HOST") or P.HOST)
+    ap.add_argument("--host", default=os.environ.get("HOST")
+                    or ("0.0.0.0" if hospedado else P.HOST))
     ap.add_argument("--sem-navegador", action="store_true",
-                    default=bool(os.environ.get("PORT")))
+                    default=hospedado)
     args = ap.parse_args()
+
+    # Sem isto o Python segura o stdout num buffer quando a saida nao e' um
+    # terminal, e as mensagens abaixo nunca aparecem nos logs do Render.
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except AttributeError:                    # Python < 3.7
+        pass
 
     endereco = f"http://{args.host}:{args.porta}"
     servidor = ThreadingHTTPServer((args.host, args.porta), Handler)
-    print(f"Simulador de coletas -- UTI neonatal (PBL 2026.2, Grupo 1)")
+    print(f"{P.APP_NOME_1} {P.APP_NOME_2} -- {P.APP_SUBTITULO}")
     print(f"  interface:  {endereco}")
     print(f"  dados em:   {clinico.onde_estao_os_dados()}")
+    if hospedado and clinico.onde_estao_os_dados() != "Supabase":
+        print("  AVISO: sem SUPABASE_URL/SUPABASE_SERVICE_KEY no ambiente. "
+              "O disco deste servico e' descartavel: os dados somem no "
+              "proximo deploy.")
     print(f"  Ctrl+C para parar.\n")
     if not args.sem_navegador:
         webbrowser.open(endereco)
