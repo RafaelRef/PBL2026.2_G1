@@ -98,16 +98,33 @@ button.discreto{background:transparent;color:var(--fraco);border-color:var(--lin
 .seguro{color:var(--ok)}
 
 /* ---------------------------------------------------------- métricas */
-.grade{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}
+.grade{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(124px,1fr))}
 .metrica{background:var(--tiffany-claro);border:1px solid var(--linha);
-  border-radius:11px;padding:13px}
-.metrica .rotulo{font-size:12px;color:var(--fraco);margin-bottom:3px}
+  border-radius:11px;padding:12px 13px;text-align:left;font:inherit;
+  color:var(--texto);cursor:pointer;position:relative;transition:border-color .12s}
+.metrica:hover{border-color:var(--dado-tiffany)}
+.metrica:hover::after{content:"\0192";position:absolute;top:8px;right:10px;
+  font-size:13px;font-style:italic;color:var(--dado-tiffany)}
+.metrica .rotulo{font-size:11.5px;color:var(--fraco);margin-bottom:2px}
+.metrica .valor{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;
+  line-height:1.15}
+.metrica .unidade{display:block;font-size:11.5px;font-weight:500;
+  color:var(--fraco);margin-top:2px}
+:root[data-theme="dark"] .metrica{background:rgba(158,223,215,.07)}
 .metrica.hemo{background:var(--rosa-claro)}
 :root[data-theme="dark"] .metrica.hemo{
   background:color-mix(in srgb,var(--rosa) 10%,transparent)}
-.metrica .valor{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
-.metrica .unidade{display:block;font-size:12px;font-weight:500;
-  color:var(--fraco);margin-top:2px}
+
+/* equação */
+.eq{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;
+  line-height:1.9}
+.eq .simb{color:var(--texto)}
+.eq .subs{color:var(--fraco)}
+.eq .res{color:var(--acao);font-weight:700;font-size:16px;
+  border-top:1px solid var(--linha);padding-top:9px;margin-top:5px;display:block}
+:root[data-theme="dark"] .eq .res{color:var(--tiffany)}
+.eq .onde{font-family:inherit;font-size:11.5px;color:var(--fraco);
+  margin-top:13px;display:block}
 
 /* ---------------------------------------------------------- exames */
 .exames{display:grid;gap:13px;grid-template-columns:repeat(auto-fit,minmax(235px,1fr))}
@@ -118,8 +135,12 @@ button.discreto{background:transparent;color:var(--fraco);border-color:var(--lin
 .exame .vol{font-size:13px;color:var(--fraco);font-variant-numeric:tabular-nums}
 .contagem{display:flex;gap:13px;font-variant-numeric:tabular-nums}
 .contagem div{flex:1}
-.contagem .n{font-size:23px;font-weight:800;line-height:1.1}
-.contagem .leg{font-size:11px;color:var(--fraco);line-height:1.3}
+.contagem .n{font-size:23px;font-weight:800;line-height:1.1;display:block}
+.contagem .leg{font-size:11px;color:var(--fraco);line-height:1.3;display:block}
+.n-eq{background:none;border:none;padding:0;text-align:left;width:100%;
+  color:var(--texto);font:inherit;cursor:pointer;border-radius:6px}
+.n-eq:hover:not(:disabled){background:none;filter:none}
+.n-eq:hover .leg{color:var(--dado-tiffany);text-decoration:underline}
 .exame button{width:100%}
 
 /* ---------------------------------------------------------- gráficos */
@@ -368,7 +389,7 @@ function modal({ titulo, corpo, ok = "Confirmar", cancelar = "Cancelar", perigo 
         aria-label="${esc(titulo)}">
       <h3>${esc(titulo)}</h3>${corpo}
       <div class="botoes">
-        <button class="discreto" data-r="0">${esc(cancelar)}</button>
+        ${cancelar ? `<button class="discreto" data-r="0">${esc(cancelar)}</button>` : ""}
         <button class="${perigo ? "perigo" : ""}" data-r="1">${esc(ok)}</button>
       </div></div>`;
     const fechar = v => {
@@ -599,157 +620,154 @@ async function oferecerTransfusao(automatico) {
 }
 
 function desenhar(d) {
-  const p = d.paciente, a = d.avaliacao, cfg = estado.cfg, cr = cfg.crescimento;
+  const p = d.paciente, a = d.avaliacao, cfg = estado.cfg, h = a.hemo;
   const critico = a.transfusao_indicada;
   estado.avaliacao = a;
 
-  const metricas = [
-    ["Peso hoje", n2(a.peso), `kg · nasceu com ${n2(a.peso_nascimento)}`],
-    ["Idade", n1(a.semana_vida), `semanas (dia ${Math.round(a.dia_vida)})`],
-    ["Volume sanguíneo", Math.round(a.V_ref), `mL de referência`],
-    ["Volume atual", n1(a.V), `mL`],
-    ["Hematócrito", n3(a.Hct), `crítico ${n3(a.hct_limiar)} nesta idade`],
-    ["Cabe coletar", n2(a.disponivel), "mL agora"],
-  ].map(([r, v, u]) => `<div class="metrica"><div class="rotulo">${r}</div>
-      <div class="valor${r === "Hematócrito" ? (critico ? " alerta" : " seguro") : ""}">${v}
-      <span class="unidade">${esc(u)}</span></div></div>`).join("");
+  const cartao = (rotulo, valor, unidade, chave, classe = "", mal = false) =>
+    `<button class="metrica ${classe}" data-eq="${esc(chave)}">
+       <div class="rotulo">${esc(rotulo)}</div>
+       <div class="valor${mal ? " alerta" : ""}">${valor}
+       <span class="unidade">${esc(unidade)}</span></div>
+     </button>`;
 
-  const h = a.hemo;
+  const paciente = [
+    cartao("Peso", n2(a.peso), "kg", "peso"),
+    cartao("Volume sanguíneo", n1(a.V_ref), "mL", "V_ref"),
+    cartao("Volume atual", n1(a.V), "mL", "V"),
+    cartao("Hemácias", n1(a.M), "mL", "M"),
+    cartao("Hematócrito", n3(a.Hct), "", "Hct", "", critico),
+    cartao("Hct crítico", n3(a.hct_limiar), "", "hct_limiar"),
+    cartao("Cabe coletar", n2(a.disponivel), "mL", "disponivel"),
+  ].join("");
+
   const hemo = [
-    ["Pressão arterial média", n1(h.PAM), `mmHg · mínimo ${Math.round(h.pam_minima)}`,
-     h.hipotenso],
-    ["Sistólica / diastólica", `${Math.round(h.PAS)}/${Math.round(h.PAD)}`, "mmHg", false],
-    ["Débito cardíaco", Math.round(h.DC_kg), "mL/kg/min", false],
-    ["Oferta de O₂", n1(h.DO2_kg), "mL O₂/min/kg", false],
-    ["Hemoglobina", n1(h.Hb), "g/dL", false],
-  ].map(([r, v, u, mal]) => `<div class="metrica hemo"><div class="rotulo">${r}</div>
-      <div class="valor${mal ? " alerta" : ""}">${v}
-      <span class="unidade">${esc(u)}</span></div></div>`).join("");
+    cartao("PAM", n1(h.PAM), "mmHg", "PAM", "hemo", h.hipotenso),
+    cartao("PAM mínima", Math.round(h.pam_minima), "mmHg", "pam_minima", "hemo"),
+    cartao("Sistólica", Math.round(h.PAS), "mmHg", "PAS", "hemo"),
+    cartao("Diastólica", Math.round(h.PAD), "mmHg", "PAD", "hemo"),
+    cartao("Débito cardíaco", Math.round(h.DC_kg), "mL/kg/min", "DC_kg", "hemo"),
+    cartao("Oferta de O₂", n1(h.DO2_kg), "mL/min/kg", "DO2_kg", "hemo"),
+    cartao("Hemoglobina", n1(h.Hb), "g/dL", "Hb", "hemo"),
+    cartao("Resistência", n2(h.R ?? 0), "mmHg·s/mL", "R", "hemo"),
+  ].join("");
 
-  // O botão nunca é desabilitado: urgência existe. Fora do limite ele muda
-  // de cor e pede confirmação antes de registrar.
+  const regras = [
+    cartao("Regra 24 h", n2(a.limites.janela_24h), "mL", "regra_24h"),
+    cartao("Regra Hct", n2(a.limites.hct), "mL", "regra_hct"),
+    cartao("Regra volume", n2(a.limites.volume), "mL", "regra_volume"),
+  ].join("");
+
   const exames = Object.values(a.exames).map(e => `
     <div class="exame${e.cabe_agora ? "" : " estourado"}">
       <header><strong>${esc(e.nome)}</strong><span class="vol">${n2(e.volume)} mL</span></header>
       <div class="contagem">
-        <div><div class="n ${e.cabe_agora ? "seguro" : "alerta"}">${e.cabe_agora}</div>
-             <div class="leg">cabem agora</div></div>
-        <div><div class="n">${e.restante_24h}</div>
-             <div class="leg">restam nas<br>24 h (teto ${e.teto_diario})</div></div>
-        <div><div class="n">${e.ate_hct_critico}</div>
-             <div class="leg">até o Hct<br>crítico</div></div>
+        ${[["cabe_agora", e.cabe_agora, "agora"],
+           ["restante_24h", e.restante_24h, "em 24 h"],
+           ["ate_hct_critico", e.ate_hct_critico, "até o crítico"]]
+          .map(([k, v, rot]) => `<div>
+            <button class="n-eq" data-eq-exame="${esc(e.chave)}" data-eq-k="${k}">
+              <span class="n ${k === "cabe_agora" ? (v ? "seguro" : "alerta") : ""}">${v}</span>
+              <span class="leg">${rot}</span></button></div>`).join("")}
       </div>
-      <div class="nota" style="margin:0">${esc(e.texto_espera)}</div>
       <button data-exame="${esc(e.chave)}" class="${e.cabe_agora ? "" : "perigo"}">
-        ${e.cabe_agora ? "Registrar " + esc(e.nome.toLowerCase())
-                       : "Coletar fora do limite"}</button>
+        ${e.cabe_agora ? "Coletar" : "Coletar fora do limite"}</button>
     </div>`).join("");
 
   const historico = p.coletas.length ? p.coletas.map(c => `
     <tr><td>${esc(cfg.exames.find(x => x.chave === c.exame)?.nome || c.exame)}
           ${c.forcada ? ` <span class="alerta">· fora do limite</span>` : ""}</td>
         <td class="num">${n2(c.volume)} mL</td>
-        <td class="num">dia ${n1(c.hora_vida / 24)} de vida</td></tr>`).join("")
-    : `<tr><td colspan="3" class="vazio">Nenhuma coleta registrada.</td></tr>`;
+        <td class="num">dia ${n1(c.hora_vida / 24)}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="vazio">Sem coletas.</td></tr>`;
 
   const transfusoes = (p.transfusoes || []).length
-    ? `<div class="cartao">
-        <h2>Transfusões</h2>
+    ? `<div class="cartao"><h2>Transfusões</h2>
         <table><thead><tr><th>Volume</th><th class="num">Hct antes</th>
-          <th class="num">Quando</th></tr></thead><tbody>
-          ${p.transfusoes.map(t => `<tr>
-            <td>${n1(t.volume)} mL de concentrado</td>
+          <th class="num">Dia</th></tr></thead><tbody>
+          ${p.transfusoes.map(t => `<tr><td>${n1(t.volume)} mL</td>
             <td class="num">${n3(t.hct_antes)}</td>
-            <td class="num">dia ${n1(t.hora_vida / 24)} de vida</td></tr>`).join("")}
+            <td class="num">${n1(t.hora_vida / 24)}</td></tr>`).join("")}
         </tbody></table></div>`
     : "";
 
   $("#detalhe").innerHTML = `
     <div class="cartao">
       <h2>${esc(p.nome)}</h2>
-      <div class="nota" style="margin:-8px 0 15px">
-        cadastrado por ${esc(p.cadastrado_por)} · crescendo
-        ${cr.ganho_g_kg_dia} g/kg/dia · ${p.coletas.length} coleta(s),
-        ${n2(a.coletado_total)} mL no total
-        (${(100 * a.frac_coletado).toFixed(1)}% do volume inicial)
-      </div>
-      <div class="grade">${metricas}</div>
+      <div class="nota" style="margin:-8px 0 14px">dia ${Math.round(a.dia_vida)} ·
+        ${n1(a.semana_vida)} sem · IG ${n1(h.idade_gestacional)} sem ·
+        ${p.coletas.length} coleta(s) · ${a.n_transfusoes} transfusão(ões)</div>
+      <div class="grade">${paciente}</div>
+      ${critico ? `<div class="aviso erro">Hct ${n3(a.Hct)} abaixo do crítico
+        ${n3(a.hct_limiar)} — transfusão indicada.
+        <div style="margin-top:10px"><button id="btn-transfundir">
+          Transfundir ${n1(a.transfusao.volume)} mL</button></div></div>` : ""}
       <div class="tempo">
-        <span class="rotulo">Demonstração — avançar o tempo:</span>
+        <span class="rotulo">Tempo:</span>
         <button class="secundario" data-dias="1">+1 dia</button>
         <button class="secundario" data-dias="7">+7 dias</button>
         <button class="secundario" data-dias="14">+14 dias</button>
-        ${a.dias_extra ? `<span class="rotulo">já avançado
-          ${n1(a.dias_extra)} dia(s)</span>` : ""}
+        ${!critico ? `<span class="rotulo" style="margin-left:6px">·</span>
+          <a href="#" id="btn-transfundir" style="color:var(--acao);font-size:13px">
+          transfundir</a>` : ""}
       </div>
-      ${critico ? `<div class="aviso erro">
-        Hematócrito abaixo do crítico de ${n3(a.hct_limiar)} para
-        ${n2(a.peso)} kg — transfusão indicada.
-        <div style="margin-top:11px"><button id="btn-transfundir">
-          Transfundir ${n1(a.transfusao.volume)} mL</button></div>
-      </div>` : `<div class="nota">
-        ${a.n_transfusoes} transfusão(ões) até agora${a.n_transfusoes
-          ? ", " + n1(a.transfundido_total) + " mL no total" : ""} ·
-        <a href="#" id="btn-transfundir" style="color:var(--acao)">transfundir
-        mesmo assim</a></div>`}
+    </div>
+
+    <div class="cartao">
+      <h2>Coletas</h2>
+      <div class="exames">${exames}</div>
+      <div id="aviso-coleta"></div>
+      <h3 style="margin:18px 0 10px">Limites</h3>
+      <div class="grade">${regras}</div>
     </div>
 
     <div class="cartao">
       <h2>Hemodinâmica</h2>
       <div class="grade">${hemo}</div>
-      ${h.hipotenso ? `<div class="aviso erro">PAM de ${n1(h.PAM)} mmHg abaixo
-        do limiar de ${Math.round(h.pam_minima)} mmHg (idade gestacional de
-        ${n1(h.idade_gestacional)} semanas) — hipotensão.</div>` : ""}
-      <div class="tempo" style="border-top:none;padding-top:4px">
-        <span class="rotulo">Reserva cardiovascular:</span>
+      <div class="tempo">
+        <span class="rotulo">Reserva:</span>
         ${Object.entries(cfg.reservas).map(([k, nome]) =>
           `<button class="${k === h.reserva ? "" : "secundario"}"
                    data-reserva="${esc(k)}">${esc(nome)}</button>`).join("")}
       </div>
-      <div class="nota">O barorreflexo responde à queda de PAM com
-      vasoconstrição e taquicardia. Agora: frequência ×${n2(h.hr_rel)},
-      raio dos vasos ×${n2(h.r_rel)}.</div>
     </div>
 
     <div class="cartao">
-      <h2>Pressão arterial no tempo</h2>
-      ${legenda([["--dado-tiffany", "PAM", false],
-                 ["--dado-sangue", "limiar de hipotensão (IG em semanas)", true]])}
-      ${graficoPAM(a)}
-    </div>
-
-    <div class="cartao">
-      <h2>Registrar nova coleta</h2>
-      <div class="exames">${exames}</div>
-      <div id="aviso-coleta"></div>
-    </div>
-
-    <div class="cartao">
-      <h2>Hematócrito no tempo</h2>
-      ${legenda([["--dado-sangue", "Hct do bebê", false],
-                 ["--dado-sangue", "limiar crítico (Deschmann 2024)", true]])}
+      <h2>Hematócrito</h2>
+      ${legenda([["--dado-sangue", "Hct", false],
+                 ["--dado-sangue", "limiar crítico", true]])}
       ${graficoHct(a)}
     </div>
 
     <div class="cartao">
-      <h2>Volume sanguíneo no tempo</h2>
-      ${legenda([["--dado-azul", "volume atual V", false],
-                 ["--dado-tiffany", "volume de referência V_ref", true]])}
-      ${graficoVolume(a, cr)}
+      <h2>Volume sanguíneo</h2>
+      ${legenda([["--dado-azul", "V", false], ["--dado-tiffany", "V_ref", true]])}
+      ${graficoVolume(a)}
+    </div>
+
+    <div class="cartao">
+      <h2>Pressão arterial</h2>
+      ${legenda([["--dado-tiffany", "PAM", false],
+                 ["--dado-sangue", "limiar de hipotensão", true]])}
+      ${graficoPAM(a)}
     </div>
 
     ${transfusoes}
 
     <div class="cartao">
-      <h2>Histórico de coletas</h2>
+      <h2>Histórico</h2>
       <table><thead><tr><th>Exame</th><th class="num">Volume</th>
-        <th class="num">Quando</th></tr></thead><tbody>${historico}</tbody></table>
+        <th class="num">Dia</th></tr></thead><tbody>${historico}</tbody></table>
     </div>`;
 
-  for (const b of document.querySelectorAll(".exame button"))
+  for (const b of document.querySelectorAll(".exame button[data-exame]"))
     b.onclick = () => coletar(b.dataset.exame);
-  const bt = $("#btn-transfundir");
-  if (bt) bt.onclick = ev => { ev.preventDefault(); oferecerTransfusao(false); };
+  for (const b of document.querySelectorAll("[data-eq]"))
+    b.onclick = () => mostrarEquacao(a.eq[b.dataset.eq], b.querySelector(".rotulo").textContent);
+  for (const b of document.querySelectorAll("[data-eq-exame]"))
+    b.onclick = () => mostrarEquacao(
+      a.exames[b.dataset.eqExame].eq[b.dataset.eqK],
+      a.exames[b.dataset.eqExame].nome);
   for (const b of document.querySelectorAll(".tempo button[data-dias]"))
     b.onclick = () => avancar(Number(b.dataset.dias));
   for (const b of document.querySelectorAll(".tempo button[data-reserva]"))
@@ -759,13 +777,29 @@ function desenhar(d) {
                  { method: "POST", corpo: { reserva: b.dataset.reserva } }));
       } catch (e) { await abrirPaciente(estado.pacienteId); avisar("#aviso-coleta", e.message); }
     };
+  for (const bt of document.querySelectorAll("#btn-transfundir"))
+    bt.onclick = ev => { ev.preventDefault(); oferecerTransfusao(false); };
 
-  // Abaixo do crítico, oferece a transfusão sozinho -- uma vez por paciente
-  // por visita, para não reaparecer a cada coleta que o médico registre.
   if (critico && !estado.jaOferecido.has(p.id)) {
     estado.jaOferecido.add(p.id);
     oferecerTransfusao(true);
   }
+}
+
+/* A equação vem pronta do servidor (interface/equacoes.py), montada ao lado
+   do cálculo — a tela nunca mostra uma fórmula diferente da que rodou. */
+function mostrarEquacao(q, titulo) {
+  if (!q) return;
+  modal({
+    titulo: titulo || q.simbolo,
+    ok: "Fechar", cancelar: "",
+    corpo: `<div class="eq">
+      <div class="simb">${esc(q.formula)}</div>
+      <div class="subs">${esc(q.substituida)}</div>
+      <span class="res">${esc(q.simbolo)} = ${esc(q.resultado)} ${esc(q.unidade)}</span>
+      <span class="onde">${esc(q.onde)}</span>
+    </div>`,
+  });
 }
 
 // ------------------------------------------------------------- gráficos
@@ -858,7 +892,7 @@ function graficoPAM(a) {
   });
 }
 
-function graficoVolume(a, cr) {
+function graficoVolume(a) {
   return grafico({
     xs: a.serie.dia,
     linhas: [{ ys: a.serie.V, cor: "--dado-azul" },

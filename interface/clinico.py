@@ -42,6 +42,7 @@ import parametros as P
 import comum
 import fisiologia as fis
 import armazem
+import equacoes
 
 bal = comum.importar("02_balanco_volume_hemacias")
 rec = comum.importar("06_recomendacao")
@@ -312,6 +313,7 @@ def avaliar(pac):
                      f"sem transfusão.")
         exames[chave] = dict(
             chave=chave, nome=ex["nome"], volume=v,
+            eq=equacoes.por_exame(chave, ex["nome"], v, disponivel, L, hct_crit),
             cabe_agora=cabe,
             restante_24h=int(max(0.0, L["janela_24h"]) // v),
             teto_diario=int((P.FRAC_MAX_24H * e["V_ref"]) // v),
@@ -328,7 +330,7 @@ def avaliar(pac):
     pam_minima = ig * P.PAM_POR_SEMANA_IG
     hemo = dict(
         PAM=h["PAM"], PAS=h["PAS"], PAD=h["PAD"],
-        DC=h["DC"], DC_kg=h["DC"] / e["peso"],
+        DC=h["DC"], DC_kg=h["DC"] / e["peso"], R=h["R"],
         DO2=h["DO2"], DO2_kg=h["DO2_kg"], Hb=h["Hb"],
         hr_rel=h["hr_rel"], r_rel=h["r_rel"], erro=h["erro"],
         reserva=pac.get("reserva") or P.RESERVA_PADRAO,
@@ -349,7 +351,13 @@ def avaliar(pac):
         hct_depois=M_depois / e["V_ref"],
         indicada=e["Hct"] < hct_crit)
 
+    # cada numero da tela com a formula que o produziu
+    eqs = equacoes.montar(e, h, pac, peso0, fis.windkessel_do_bebe(e["peso"]),
+                          hct_crit, L, disponivel,
+                          rec.coletado_em_24h(e), transfusao, ig)
+
     return dict(
+        eq=eqs,
         hora_vida=hora_vida,
         dia_vida=hora_vida / 24.0,
         semana_vida=hora_vida / 168.0,

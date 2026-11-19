@@ -221,6 +221,27 @@ Tres parametros do relatorio parcial foram revistos contra as fontes:
 `MODELO_VISCOSIDADE` alterna entre `"linear"` e `"exponencial"` para comparar
 as duas formas; `TAU_EXCRECAO = TAU_V` devolve o comportamento antigo.
 
+### Cada número mostra a própria equação
+
+Clicar em qualquer valor calculado abre a fórmula em símbolos, a mesma
+fórmula com os valores substituídos e o resultado — mais o arquivo e a
+função de onde veio. Por exemplo, ao clicar em *Cabe coletar*:
+
+```
+disp = min(R₁, R₂, R₃)
+disp = min(2.02; 8.91; 3.38)
+disp = 2.02 mL
+06_recomendacao.volume_disponivel
+```
+
+São 24 equações na tela do paciente mais 3 por exame. Elas são montadas em
+`interface/equacoes.py`, **ao lado do cálculo** e não no HTML: assim não
+existe a chance de a tela exibir uma fórmula e o modelo rodar outra. Se o
+`parametros.py` mudar, a equação exibida muda junto.
+
+Para a apresentação, isso responde a pergunta mais provável da banca —
+*"de onde veio esse número?"* — com dois cliques.
+
 ### Hemodinâmica na interface
 
 A tela do paciente mostra o Windkessel acoplado, não só o balanço de volume:
