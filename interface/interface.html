@@ -126,6 +126,16 @@ button.discreto{background:transparent;color:var(--fraco);border-color:var(--lin
 .chave{width:16px;height:0;border-top-width:2.5px;border-top-style:solid}
 svg.gr{display:block;width:100%;height:auto}
 
+/* ---------------------------------------------------------- suporte */
+.suporte{display:flex;align-items:center;gap:9px;font-size:13.5px;
+  padding:9px 13px;border:1px solid var(--linha);border-radius:9px;
+  background:var(--bg);cursor:pointer;user-select:none}
+.suporte input{width:auto;margin:0;cursor:pointer}
+.suporte.ligado{border-color:var(--dado-azul);
+  background:color-mix(in srgb,var(--azul) 35%,transparent)}
+:root[data-theme="dark"] .suporte.ligado{
+  background:color-mix(in srgb,var(--dado-azul) 18%,transparent)}
+
 /* ---------------------------------------------------------- demonstração */
 .tempo{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
   margin-top:15px;padding-top:14px;border-top:1px dashed var(--linha)}
@@ -250,6 +260,10 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
             <button type="submit" style="width:100%">Cadastrar</button>
           </div>
         </div>
+        <label class="suporte" id="rotulo-suporte" style="margin-top:13px;width:fit-content">
+          <input type="checkbox" id="p-suporte">
+          Em suporte respiratório
+        </label>
       </form>
       <div class="nota" id="previa-volume"></div>
       <div id="aviso-paciente"></div>
@@ -405,7 +419,8 @@ async function carregarLista() {
           <div class="nome">${esc(p.nome)}</div>
           <div class="meta">${n2(p.peso)} kg · ${n1(p.semana_vida)} sem de vida ·
             volume ${Math.round(p.V_ref)} mL · ${p.coletas} coleta(s)${
-            p.transfusoes ? " · " + p.transfusoes + " transfusão(ões)" : ""}</div>
+            p.transfusoes ? " · " + p.transfusoes + " transfusão(ões)" : ""}${
+            p.suporte_respiratorio ? " · em suporte respiratório" : ""}</div>
         </div>
         <div style="text-align:right">
           <div class="hct ${p.transfusao_indicada ? "alerta" : "seguro"}">Hct ${n3(p.Hct)}</div>
@@ -440,24 +455,34 @@ async function apagarPaciente(p) {
   } catch (e) { avisar("#aviso-paciente", e.message); }
 }
 
-$("#p-peso").oninput = () => {
+function previaCadastro() {
   const peso = parseFloat($("#p-peso").value);
-  $("#previa-volume").textContent = (peso > 0 && estado.cfg)
-    ? `Volume sanguíneo estimado ${Math.round(peso * estado.cfg.vol_por_kg)} mL `
-      + `(${estado.cfg.vol_por_kg} mL/kg). Hematócrito crítico para esse peso: `
-      + `${n3(hctCritico(peso))}.`
-    : "";
-};
+  const semana = parseFloat($("#p-semana").value);
+  const sup = $("#p-suporte").checked;
+  $("#rotulo-suporte").classList.toggle("ligado", sup);
+  if (!(peso > 0) || !estado.cfg) { $("#previa-volume").textContent = ""; return; }
+  let t = `Volume sanguíneo estimado ${Math.round(peso * estado.cfg.vol_por_kg)} mL `
+        + `(${estado.cfg.vol_por_kg} mL/kg).`;
+  if (semana >= 0)
+    t += ` Hematócrito crítico com ${n1(semana)} semana(s)`
+       + `${sup ? " em suporte respiratório" : " em ar ambiente"}: `
+       + `${n3(hctCritico(semana * 7, sup))}.`;
+  $("#previa-volume").textContent = t;
+}
+$("#p-peso").oninput = $("#p-semana").oninput = $("#p-suporte").onchange = previaCadastro;
 
-// espelha fisiologia.hct_critico só para a prévia; o valor que vale é o do servidor
-function hctCritico(peso) {
-  const px = [0.75, 1.00, 1.50, 2.50], py = [0.33, 0.31, 0.28, 0.25];
-  if (peso <= px[0]) return py[0];
-  if (peso >= px[px.length - 1]) return py[py.length - 1];
-  for (let i = 1; i < px.length; i++)
-    if (peso <= px[i])
-      return py[i - 1] + (py[i] - py[i - 1]) * (peso - px[i - 1]) / (px[i] - px[i - 1]);
-  return py[py.length - 1];
+/* Espelha fisiologia.hct_critico só para a prévia do cadastro; o valor que
+   vale é sempre o que o servidor devolve. Deschmann et al. (2024). */
+function hctCritico(diaVida, suporte) {
+  const sem = [1, 2, 3];
+  const v = suporte ? [0.330, 0.300, 0.270] : [0.300, 0.255, 0.210];
+  const x = diaVida / 7;
+  if (x <= sem[0]) return v[0];
+  if (x >= sem[sem.length - 1]) return v[v.length - 1];
+  for (let i = 1; i < sem.length; i++)
+    if (x <= sem[i])
+      return v[i - 1] + (v[i] - v[i - 1]) * (x - sem[i - 1]) / (sem[i] - sem[i - 1]);
+  return v[v.length - 1];
 }
 
 $("#form-paciente").onsubmit = async ev => {
@@ -465,8 +490,10 @@ $("#form-paciente").onsubmit = async ev => {
   try {
     const r = await api("/api/pacientes", { method: "POST", corpo: {
       nome: $("#p-nome").value, peso: $("#p-peso").value,
-      semana_vida: $("#p-semana").value } });
+      semana_vida: $("#p-semana").value,
+      suporte: $("#p-suporte").checked } });
     $("#form-paciente").reset();
+    $("#rotulo-suporte").classList.remove("ligado");
     $("#previa-volume").textContent = "";
     avisar("#aviso-paciente", "");
     await carregarLista();
@@ -584,7 +611,7 @@ function desenhar(d) {
     ["Idade", n1(a.semana_vida), `semanas (dia ${Math.round(a.dia_vida)})`],
     ["Volume sanguíneo", Math.round(a.V_ref), `mL de referência`],
     ["Volume atual", n1(a.V), `mL`],
-    ["Hematócrito", n3(a.Hct), `crítico ${n3(a.hct_limiar)} neste peso`],
+    ["Hematócrito", n3(a.Hct), `crítico ${n3(a.hct_limiar)} nesta idade`],
     ["Cabe coletar", n2(a.disponivel), "mL agora"],
   ].map(([r, v, u]) => `<div class="metrica"><div class="rotulo">${r}</div>
       <div class="valor${r === "Hematócrito" ? (critico ? " alerta" : " seguro") : ""}">${v}
@@ -638,6 +665,18 @@ function desenhar(d) {
         (${(100 * a.frac_coletado).toFixed(1)}% do volume inicial)
       </div>
       <div class="grade">${metricas}</div>
+      <div style="margin-top:14px">
+        <label class="suporte${a.suporte_respiratorio ? " ligado" : ""}"
+               style="width:fit-content">
+          <input type="checkbox" id="chk-suporte"
+                 ${a.suporte_respiratorio ? "checked" : ""}>
+          Em suporte respiratório — limiar ${n3(a.hct_limiar)}
+          ${a.suporte_respiratorio ? "(seria " + n3(hctCritico(a.dia_vida, false))
+                                   : "(seria " + n3(hctCritico(a.dia_vida, true))}
+          ${a.suporte_respiratorio ? "em ar ambiente)" : "em suporte)"}
+        </label>
+      </div>
+
       <div class="tempo">
         <span class="rotulo">Demonstração — avançar o tempo:</span>
         <button class="secundario" data-dias="1">+1 dia</button>
@@ -667,7 +706,7 @@ function desenhar(d) {
     <div class="cartao">
       <h2>Hematócrito no tempo</h2>
       ${legenda([["--dado-sangue", "Hct do bebê", false],
-                 ["--dado-sangue", "limiar crítico (cai com o peso)", true]])}
+                 ["--dado-sangue", "limiar crítico (Deschmann 2024)", true]])}
       ${graficoHct(a)}
     </div>
 
@@ -692,6 +731,13 @@ function desenhar(d) {
   if (bt) bt.onclick = ev => { ev.preventDefault(); oferecerTransfusao(false); };
   for (const b of document.querySelectorAll(".tempo button"))
     b.onclick = () => avancar(Number(b.dataset.dias));
+  const cs = $("#chk-suporte");
+  if (cs) cs.onchange = async () => {
+    try {
+      desenhar(await api(`/api/pacientes/${estado.pacienteId}/suporte`,
+                         { method: "POST", corpo: { suporte: cs.checked } }));
+    } catch (e) { await abrirPaciente(estado.pacienteId); avisar("#aviso-coleta", e.message); }
+  };
 
   // Abaixo do crítico, oferece a transfusão sozinho -- uma vez por paciente
   // por visita, para não reaparecer a cada coleta que o médico registre.

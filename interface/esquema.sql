@@ -86,3 +86,9 @@ alter table public.coletas
 -- semanas para ver o hematocrito cair. Soma-se a idade real do paciente.
 alter table public.pacientes
     add column if not exists dias_extra double precision not null default 0;
+
+-- Suporte respiratorio. Entra no limiar transfusional: Deschmann et al.
+-- (2024) recomenda limiar mais alto para quem depende de suporte. Muda ao
+-- longo da internacao, entao a interface deixa o medico alternar.
+alter table public.pacientes
+    add column if not exists suporte_respiratorio boolean not null default false;

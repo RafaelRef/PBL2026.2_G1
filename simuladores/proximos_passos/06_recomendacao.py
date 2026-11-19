@@ -63,11 +63,12 @@ def projetar(estado, horas, dt=P.DT_H, peso0=P.PESO0):
 def limiar_de(limite_Hct, estado):
     """Resolve o limiar de Hct: numero fixo ou funcao do peso do dia.
 
-    A interface clinica passa `fisiologia.hct_critico`, que varia com o peso.
-    Como o bebe cresce durante a projecao, o limiar precisa ser reavaliado a
-    cada passo -- por isso aceitamos um callable, nao so um numero.
+    A interface clinica passa uma funcao do estado, porque o limiar depende
+    da idade pos-natal: como o bebe envelhece durante a projecao de horas, o
+    limiar precisa ser reavaliado a cada passo. O callable recebe o estado
+    inteiro, nao so um numero.
     """
-    return limite_Hct(estado["peso"]) if callable(limite_Hct) else limite_Hct
+    return limite_Hct(estado) if callable(limite_Hct) else limite_Hct
 
 
 def limites(estado, limite_Hct=P.HCT_LIMIAR, margem_volume=P.MARGEM_VOLUME):

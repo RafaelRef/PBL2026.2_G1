@@ -138,14 +138,14 @@ def _num(valor, campo, minimo, maximo):
     return x
 
 
-def criar_paciente(usuario, nome, peso, semana_vida):
+def criar_paciente(usuario, nome, peso, semana_vida, suporte=False):
     """Cadastra o bebe. O volume sanguineo sai de V_ref = 85 mL/kg."""
     nome = (nome or "").strip()
     if not nome:
         raise ErroClinico("Informe o nome do paciente.")
     peso = _num(peso, "Peso (kg)", 0.3, 6.0)
     semana = _num(semana_vida, "Semana de vida", 0, 52)
-    return DADOS.criar_paciente(nome, peso, semana, usuario)
+    return DADOS.criar_paciente(nome, peso, semana, usuario, bool(suporte))
 
 
 def _buscar(pid):
@@ -165,6 +165,7 @@ def listar_pacientes():
             V_ref=a["V_ref"], hct_limiar=a["hct_limiar"],
             coletas=len(pac["coletas"]),
             transfusoes=a["n_transfusoes"],
+            suporte_respiratorio=a["suporte_respiratorio"],
             disponivel=a["disponivel"],
             transfusao_indicada=a["transfusao_indicada"]))
     return saida
@@ -210,6 +211,13 @@ def registrar_transfusao(pid, usuario):
         a = avaliar(pac)
         volume = P.TRANSF_ML_KG * a["peso"]
         DADOS.criar_transfusao(pid, volume, a["Hct"], a["hora_vida"], usuario)
+    return detalhar(pid)
+
+
+def definir_suporte(pid, suporte):
+    """Liga ou desliga o suporte respiratorio -- muda o limiar transfusional."""
+    _buscar(pid)
+    DADOS.definir_suporte(pid, bool(suporte))
     return detalhar(pid)
 
 
@@ -270,9 +278,14 @@ def avaliar(pac):
     r = bal.simular(agenda, dias=hora_vida / 24.0, peso0=peso0,
                     transfundir=False, agenda_transfusoes=transf)
     e = rec.estado_de(r, -1)
-    hct_crit = fis.hct_critico(e["peso"])          # varia com o peso do dia
-    L = rec.limites(e, fis.hct_critico)
-    disponivel = rec.volume_disponivel(e, fis.hct_critico)
+    # Deschmann 2024: o limiar depende da idade pos-natal e do suporte
+    # respiratorio. Como o bebe envelhece durante a projecao de 72 h de
+    # 06_recomendacao, passamos uma FUNCAO do estado, nao um numero.
+    suporte = bool(pac.get("suporte_respiratorio"))
+    limiar = lambda est: fis.hct_critico(est["dia"], suporte)
+    hct_crit = fis.hct_critico(e["dia"], suporte)
+    L = rec.limites(e, limiar)
+    disponivel = rec.volume_disponivel(e, limiar)
 
     nomes = dict(janela_24h=f"janela de 24 h (máx. "
                             f"{100 * P.FRAC_MAX_24H:.0f}% de V_ref)",
@@ -289,7 +302,7 @@ def avaliar(pac):
             espera, texto = 0.0, "Pode coletar agora."
         else:
             espera = rec.tempo_ate_proxima_coleta(
-                e, v, peso0=peso0, limite_Hct=fis.hct_critico)
+                e, v, peso0=peso0, limite_Hct=limiar)
             texto = (f"Próxima janela em ~{espera:.0f} h."
                      if math.isfinite(espera) else
                      f"Não cabe nas próximas {P.HORIZONTE_ESPERA:.0f} h "
@@ -325,6 +338,7 @@ def avaliar(pac):
         V=e["V"], V_ref=e["V_ref"], M=e["M"], Hct=e["Hct"],
         hct_limiar=hct_crit,
         hct_limiar_fixo=P.HCT_LIMIAR,
+        suporte_respiratorio=suporte,
         transfusao_indicada=e["Hct"] < hct_crit,
         coletado_24h=rec.coletado_em_24h(e),
         coletado_total=float(r["coletado"]),
@@ -338,10 +352,10 @@ def avaliar(pac):
         transfusao=transfusao,
         n_transfusoes=len(pac.get("transfusoes", [])),
         transfundido_total=float(r["transf_V"]),
-        serie=_serie(r))
+        serie=_serie(r, lambda dia: fis.hct_critico(dia, suporte)))
 
 
-def _serie(r, pontos=400):
+def _serie(r, hct_crit_de, pontos=400):
     """Hct e volume por dia, reduzidos para o grafico da interface."""
     n = len(r["dia"])
     passo = max(1, n // pontos)
@@ -352,7 +366,7 @@ def _serie(r, pontos=400):
                 Hct=[round(float(r["Hct"][i]), 5) for i in idx],
                 V=[round(float(r["V"][i]), 3) for i in idx],
                 V_ref=[round(float(r["V_ref"][i]), 3) for i in idx],
-                hct_crit=[round(fis.hct_critico(float(r["peso"][i])), 5)
+                hct_crit=[round(hct_crit_de(float(r["dia"][i])), 5)
                           for i in idx])
 
 

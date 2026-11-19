@@ -83,6 +83,7 @@ class ArmazemJSON:
         pac.setdefault("coletas", [])
         pac.setdefault("transfusoes", [])
         pac.setdefault("dias_extra", 0.0)
+        pac.setdefault("suporte_respiratorio", False)
         return pac
 
     def listar_pacientes(self):
@@ -94,7 +95,8 @@ class ArmazemJSON:
                 return self._completar(pac)
         return None
 
-    def criar_paciente(self, nome, peso, semana_vida, cadastrado_por):
+    def criar_paciente(self, nome, peso, semana_vida, cadastrado_por,
+                       suporte=False):
         with self._trava:
             d = self._ler()
             pid = d["proximo_id"]
@@ -102,7 +104,8 @@ class ArmazemJSON:
             pac = dict(id=pid, nome=nome, peso=peso, semana_vida=semana_vida,
                        cadastrado_por=cadastrado_por,
                        cadastrado_em=_agora_iso(), coletas=[],
-                       transfusoes=[], dias_extra=0.0)
+                       transfusoes=[], dias_extra=0.0,
+                       suporte_respiratorio=suporte)
             d["pacientes"].append(pac)
             self._gravar(d)
         return pac
@@ -113,6 +116,16 @@ class ArmazemJSON:
             for pac in d["pacientes"]:
                 if pac["id"] == pid:
                     pac["dias_extra"] = pac.get("dias_extra", 0.0) + dias
+                    self._gravar(d)
+                    return
+            raise KeyError(pid)
+
+    def definir_suporte(self, pid, suporte):
+        with self._trava:
+            d = self._ler()
+            for pac in d["pacientes"]:
+                if pac["id"] == pid:
+                    pac["suporte_respiratorio"] = bool(suporte)
                     self._gravar(d)
                     return
             raise KeyError(pid)
@@ -167,6 +180,7 @@ class ArmazemSupabase:
             pac[lista] = sorted(pac.get(lista) or [],
                                 key=lambda c: c["hora_vida"])
         pac["dias_extra"] = pac.get("dias_extra") or 0.0
+        pac["suporte_respiratorio"] = bool(pac.get("suporte_respiratorio"))
         return pac
 
     def buscar_usuario(self, login):
@@ -192,10 +206,11 @@ class ArmazemSupabase:
             "id": f"eq.{pid}", "select": self.EMBUTIDO, "limit": "1"})
         return self._arrumar(r[0]) if r else None
 
-    def criar_paciente(self, nome, peso, semana_vida, cadastrado_por):
+    def criar_paciente(self, nome, peso, semana_vida, cadastrado_por,
+                       suporte=False):
         pac = supabase_db.inserir("pacientes", dict(
             nome=nome, peso=peso, semana_vida=semana_vida,
-            cadastrado_por=cadastrado_por))
+            cadastrado_por=cadastrado_por, suporte_respiratorio=suporte))
         pac["coletas"] = []
         pac["transfusoes"] = []
         return pac
@@ -216,6 +231,10 @@ class ArmazemSupabase:
             raise KeyError(pid)
         supabase_db.atualizar("pacientes", {"id": f"eq.{pid}"},
                               {"dias_extra": (atual.get("dias_extra") or 0.0) + dias})
+
+    def definir_suporte(self, pid, suporte):
+        supabase_db.atualizar("pacientes", {"id": f"eq.{pid}"},
+                              {"suporte_respiratorio": bool(suporte)})
 
     def apagar_paciente(self, pid):
         # coletas e transfusoes somem junto: as chaves estrangeiras do

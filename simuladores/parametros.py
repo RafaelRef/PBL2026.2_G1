@@ -32,11 +32,20 @@ GANHO_PESO   = 15.0           # g/kg/dia  ganho de peso alvo            TODO
 HCT0         = 0.45           # -       hematocrito inicial
 
 # ------------------------------------------------ hemacias (eritropoiese)
-VIDA_HEMACIA   = 45.0         # dias    vida media (adulto ~120)        TODO
+# VIDA MEDIA, nao meia-vida: a destruicao e' M/VIDA_HEMACIA, sem o ln2. A
+# meia-vida equivalente e' VIDA_HEMACIA * ln2 = 31 dias. Literatura para
+# prematuro: 30-50 dias de sobrevida (termo 60-70, adulto 110-130); medidas
+# diretas em ~26 semanas dao 56 +- 7 dias.
+VIDA_HEMACIA   = 45.0         # dias    vida media (adulto ~120)
 # Producao em fracao da destruicao basal (M0/VIDA_HEMACIA). E' insuficiente:
 # manter o Hct durante o crescimento exigiria ~2.1x a destruicao basal, e o
 # teto PROD_MAX apenas empata com a destruicao -- nunca faz M crescer.
 FRAC_PROD_BASAL = 0.60        # -       producao basal / destruicao basal  TODO
+# Referencia medida para conferir a calibracao acima: Kuruvilla et al. (2016)
+# acharam producao de Hb de 0.23 +- 0.12 g/kg/dia no 1o mes, em 79 prematuros
+# de peso medio 0.768 kg -- praticamente o paciente de referencia daqui.
+PROD_HB_MEDIDA = 0.23         # g/kg/dia  Kuruvilla et al. (2016)
+PROD_HB_DESVIO = 0.12         # g/kg/dia
 GANHO_PROD      = 2.00        # -       resposta lenta a (HCT0 - Hct)      TODO
 PROD_MAX        = 1.20        # -       teto da producao
 
@@ -89,17 +98,22 @@ HCT_LIMIAR      = 0.30        # -       limiar de indicacao             TODO
                               #         numerados. A interface clinica usa
                               #         fisiologia.hct_critico(peso), abaixo.
 
-# Limiar que varia com o peso: quanto menor o bebe, menos reserva ele tem e
-# mais alto o Hct em que se indica transfusao. Pares (peso [kg], Hct), com
-# interpolacao linear entre eles e patamar fora das pontas.
+# Limiar da interface clinica: varia com a IDADE POS-NATAL e com o SUPORTE
+# RESPIRATORIO, como na diretriz Deschmann et al. (2024), JAMA Netw Open,
+# que o relatorio ja cita. A diretriz publica limiares de HEMOGLOBINA por
+# semana; convertidos para hematocrito com HB_POR_HCT (Hb[g/dL] = Hct%/3):
 #
-# ATENCAO: a literatura (PINT, ETTNO) indexa o limiar pela IDADE POS-NATAL e
-# pelo suporte respiratorio, nao pelo peso. Aqui o peso entra como proxy de
-# maturidade -- no modelo ele cresce com a idade. Ancoras centradas em
-# HCT_LIMIAR no peso do prematuro de referencia, para os resultados seguirem
-# comparaveis aos dos arquivos numerados.                          TODO
-HCT_CRIT_PESOS   = (0.75, 1.00, 1.50, 2.50)   # kg
-HCT_CRIT_VALORES = (0.33, 0.31, 0.28, 0.25)   # -
+#   semana      Hb sem suporte -> Hct      Hb com suporte -> Hct
+#      1          10.0 g/dL       0.300       11.0 g/dL      0.330
+#      2           8.5 g/dL       0.255       10.0 g/dL      0.300
+#      3           7.0 g/dL       0.210        9.0 g/dL      0.270
+#
+# A diretriz e' DISCRETA por semana; aqui interpolamos linearmente para o
+# limiar nao dar saltos no meio da projecao hora a hora de 06_recomendacao.
+# Fora das pontas vira patamar (antes da semana 1 e depois da semana 3).
+HCT_CRIT_SEMANAS      = (1.0, 2.0, 3.0)       # semana de vida
+HCT_CRIT_SEM_SUPORTE  = (0.300, 0.255, 0.210) # -   ar ambiente
+HCT_CRIT_COM_SUPORTE  = (0.330, 0.300, 0.270) # -   em suporte respiratorio
 MARGEM_HCT      = 0.03        # -       folga que a estrategia guiada mantem
                               #         acima do limiar (nao coletar o
                               #         paciente ate a transfusao)

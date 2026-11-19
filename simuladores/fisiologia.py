@@ -31,18 +31,20 @@ def peso_no_dia(dia, peso0=P.PESO0):
     return peso0 * np.exp(P.GANHO_PESO / 1000.0 * dia)
 
 
-def hct_critico(peso):
-    """Hematocrito critico [-] do bebe, pelo peso do dia.
+def hct_critico(dia_vida, suporte_respiratorio=False):
+    """Hematocrito critico [-] pela idade pos-natal e pelo suporte respiratorio.
 
-    Interpola linearmente as ancoras de P.HCT_CRIT_*; fora das pontas vira
-    patamar. Quanto menor o bebe, mais alto o limiar: menos reserva
-    cardiovascular para compensar a queda de oferta de oxigenio.
+    Segue Deschmann et al. (2024): o limiar CAI com a idade pos-natal, e e'
+    mais alto em quem depende de suporte respiratorio. Interpola linearmente
+    entre as semanas (a diretriz e' discreta; ver P.HCT_CRIT_*) e vira
+    patamar antes da semana 1 e depois da semana 3.
 
-    Como o peso cresce ao longo da internacao (P.GANHO_PESO), o limiar CAI
-    com o tempo -- a margem ate a transfusao se abre devagar, mesmo sem o
-    Hct subir.
+    Nao confundir com P.HCT_LIMIAR, o valor unico de 0.30 que os arquivos
+    numerados usam -- aquele e' o limiar simplificado do relatorio parcial.
     """
-    return float(np.interp(peso, P.HCT_CRIT_PESOS, P.HCT_CRIT_VALORES))
+    valores = (P.HCT_CRIT_COM_SUPORTE if suporte_respiratorio
+               else P.HCT_CRIT_SEM_SUPORTE)
+    return float(np.interp(dia_vida / 7.0, P.HCT_CRIT_SEMANAS, valores))
 
 
 def windkessel_do_bebe(peso):
