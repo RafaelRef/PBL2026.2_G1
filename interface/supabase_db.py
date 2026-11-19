@@ -186,4 +186,5 @@ if __name__ == "__main__":
             print("  -", p)
         print("\nRode o conteudo de esquema.sql no SQL Editor do Supabase.")
     else:
-        print("as tres tabelas responderam: usuarios, pacientes, coletas")
+        print("as quatro tabelas responderam: usuarios, pacientes, "
+              "coletas, transfusoes")
