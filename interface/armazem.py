@@ -82,6 +82,7 @@ class ArmazemJSON:
         """Pacientes gravados antes das transfusoes nao tem a chave."""
         pac.setdefault("coletas", [])
         pac.setdefault("transfusoes", [])
+        pac.setdefault("dias_extra", 0.0)
         return pac
 
     def listar_pacientes(self):
@@ -100,10 +101,30 @@ class ArmazemJSON:
             d["proximo_id"] = pid + 1
             pac = dict(id=pid, nome=nome, peso=peso, semana_vida=semana_vida,
                        cadastrado_por=cadastrado_por,
-                       cadastrado_em=_agora_iso(), coletas=[], transfusoes=[])
+                       cadastrado_em=_agora_iso(), coletas=[],
+                       transfusoes=[], dias_extra=0.0)
             d["pacientes"].append(pac)
             self._gravar(d)
         return pac
+
+    def avancar_dias(self, pid, dias):
+        with self._trava:
+            d = self._ler()
+            for pac in d["pacientes"]:
+                if pac["id"] == pid:
+                    pac["dias_extra"] = pac.get("dias_extra", 0.0) + dias
+                    self._gravar(d)
+                    return
+            raise KeyError(pid)
+
+    def apagar_paciente(self, pid):
+        with self._trava:
+            d = self._ler()
+            antes = len(d["pacientes"])
+            d["pacientes"] = [p for p in d["pacientes"] if p["id"] != pid]
+            if len(d["pacientes"]) == antes:
+                raise KeyError(pid)
+            self._gravar(d)
 
     def criar_coleta(self, pid, exame, volume, hora_vida, forcada=False):
         self._anexar(pid, "coletas", dict(exame=exame, volume=volume,
@@ -145,6 +166,7 @@ class ArmazemSupabase:
         for lista in ("coletas", "transfusoes"):
             pac[lista] = sorted(pac.get(lista) or [],
                                 key=lambda c: c["hora_vida"])
+        pac["dias_extra"] = pac.get("dias_extra") or 0.0
         return pac
 
     def buscar_usuario(self, login):
@@ -187,6 +209,18 @@ class ArmazemSupabase:
         supabase_db.inserir("transfusoes", dict(
             paciente_id=pid, volume=volume, hct_antes=hct_antes,
             hora_vida=hora_vida, decidida_por=decidida_por))
+
+    def avancar_dias(self, pid, dias):
+        atual = self.buscar_paciente(pid)
+        if atual is None:
+            raise KeyError(pid)
+        supabase_db.atualizar("pacientes", {"id": f"eq.{pid}"},
+                              {"dias_extra": (atual.get("dias_extra") or 0.0) + dias})
+
+    def apagar_paciente(self, pid):
+        # coletas e transfusoes somem junto: as chaves estrangeiras do
+        # esquema.sql tem ON DELETE CASCADE
+        supabase_db.apagar("pacientes", {"id": f"eq.{pid}"})
 
 
 # ------------------------------------------------------------- escolha

@@ -76,3 +76,10 @@ alter table public.transfusoes enable row level security;
 -- Fica marcada para o registro mostrar que a decisao foi consciente.
 alter table public.coletas
     add column if not exists forcada boolean not null default false;
+
+-- ---------------------------------------------------------------- demonstracao
+-- Avanco manual do tempo, em dias. Numa UTI de verdade quem anda e' o
+-- calendario; isto existe para a apresentacao, onde ninguem espera duas
+-- semanas para ver o hematocrito cair. Soma-se a idade real do paciente.
+alter table public.pacientes
+    add column if not exists dias_extra double precision not null default 0;

@@ -44,7 +44,10 @@ body{margin:0;background:var(--bg);color:var(--texto);
 /* ---------------------------------------------------------- marca */
 .marca{display:flex;align-items:center;gap:13px}
 .marca svg{width:44px;height:auto;flex:none}
-.marca img{max-height:58px;width:auto;display:block}
+/* A arte tem fundo branco sólido (PNG sem canal alfa), então ganha um
+   cartão branco para o branco virar intenção em vez de defeito. */
+.marca img{max-height:74px;width:auto;display:block;background:#fff;
+  border-radius:12px;padding:7px 12px}
 .marca .nome{font-size:25px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
 .marca .nome .hemo{color:var(--sangue)}
 .marca .sub{font-size:13px;color:var(--fraco);line-height:1.3}
@@ -122,6 +125,19 @@ button.discreto{background:transparent;color:var(--fraco);border-color:var(--lin
 .legenda span{display:inline-flex;align-items:center;gap:6px}
 .chave{width:16px;height:0;border-top-width:2.5px;border-top-style:solid}
 svg.gr{display:block;width:100%;height:auto}
+
+/* ---------------------------------------------------------- demonstração */
+.tempo{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  margin-top:15px;padding-top:14px;border-top:1px dashed var(--linha)}
+.tempo .rotulo{font-size:12.5px;color:var(--fraco)}
+.tempo button{padding:5px 12px;font-size:13px;font-weight:600}
+.linha-paciente{display:flex;gap:8px;align-items:stretch}
+.linha-paciente .paciente{flex:1}
+.apagar{background:transparent;border:1px solid var(--linha);color:var(--fraco);
+  padding:0 15px;border-radius:var(--raio);font-size:17px;font-weight:400;
+  box-shadow:var(--sombra)}
+.apagar:hover:not(:disabled){border-color:var(--alerta);color:var(--alerta);
+  background:transparent;filter:none}
 
 /* ---------------------------------------------------------- modal */
 .cortina{position:fixed;inset:0;background:rgba(18,63,56,.45);display:flex;
@@ -381,22 +397,47 @@ async function carregarLista() {
   }
   alvo.innerHTML = "";
   for (const p of pacientes) {
-    const b = document.createElement("button");
-    b.className = "paciente";
-    b.innerHTML = `
-      <div style="flex:1">
-        <div class="nome">${esc(p.nome)}</div>
-        <div class="meta">${n2(p.peso)} kg · ${n1(p.semana_vida)} sem de vida ·
-          volume ${Math.round(p.V_ref)} mL · ${p.coletas} coleta(s)</div>
-      </div>
-      <div style="text-align:right">
-        <div class="hct ${p.transfusao_indicada ? "alerta" : "seguro"}">Hct ${n3(p.Hct)}</div>
-        <div class="meta">${p.transfusao_indicada ? "transfusão indicada"
-          : "crítico " + n3(p.hct_limiar) + " · cabem " + n2(p.disponivel) + " mL"}</div>
-      </div>`;
-    b.onclick = () => abrirPaciente(p.id);
-    alvo.appendChild(b);
+    const linha = document.createElement("div");
+    linha.className = "linha-paciente";
+    linha.innerHTML = `
+      <button class="paciente">
+        <div style="flex:1">
+          <div class="nome">${esc(p.nome)}</div>
+          <div class="meta">${n2(p.peso)} kg · ${n1(p.semana_vida)} sem de vida ·
+            volume ${Math.round(p.V_ref)} mL · ${p.coletas} coleta(s)${
+            p.transfusoes ? " · " + p.transfusoes + " transfusão(ões)" : ""}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="hct ${p.transfusao_indicada ? "alerta" : "seguro"}">Hct ${n3(p.Hct)}</div>
+          <div class="meta">${p.transfusao_indicada ? "transfusão indicada"
+            : "crítico " + n3(p.hct_limiar) + " · cabem " + n2(p.disponivel) + " mL"}</div>
+        </div>
+      </button>
+      <button class="apagar" title="Apagar paciente"
+              aria-label="Apagar ${esc(p.nome)}">&times;</button>`;
+    linha.querySelector(".paciente").onclick = () => abrirPaciente(p.id);
+    linha.querySelector(".apagar").onclick = () => apagarPaciente(p);
+    alvo.appendChild(linha);
   }
+}
+
+async function apagarPaciente(p) {
+  const ok = await modal({
+    titulo: "Apagar paciente?",
+    perigo: true,
+    ok: "Apagar",
+    corpo: `<p>Apagar <b>${esc(p.nome)}</b> e tudo que está registrado nele?</p>
+      <div class="detalhe">
+        ${linha("Coletas", p.coletas)}
+        ${linha("Transfusões", p.transfusoes || 0)}
+      </div>
+      <p>Não dá para desfazer.</p>`,
+  });
+  if (!ok) return;
+  try {
+    await api("/api/pacientes/" + p.id, { method: "DELETE" });
+    await carregarLista();
+  } catch (e) { avisar("#aviso-paciente", e.message); }
 }
 
 $("#p-peso").oninput = () => {
@@ -484,6 +525,19 @@ async function coletar(exame) {
     avisar("#aviso-coleta", forcar
       ? "Coleta registrada fora do limite seguro."
       : "Coleta registrada.", forcar ? "erro" : "ok");
+  } catch (e) {
+    await abrirPaciente(estado.pacienteId);
+    avisar("#aviso-coleta", e.message);
+  }
+}
+
+/* Pular dias existe só para a apresentação: numa UTI quem anda é o
+   calendário. O backend soma isto à idade real do paciente. */
+async function avancar(dias) {
+  for (const b of document.querySelectorAll(".tempo button")) b.disabled = true;
+  try {
+    desenhar(await api(`/api/pacientes/${estado.pacienteId}/avancar`,
+                       { method: "POST", corpo: { dias } }));
   } catch (e) {
     await abrirPaciente(estado.pacienteId);
     avisar("#aviso-coleta", e.message);
@@ -584,6 +638,14 @@ function desenhar(d) {
         (${(100 * a.frac_coletado).toFixed(1)}% do volume inicial)
       </div>
       <div class="grade">${metricas}</div>
+      <div class="tempo">
+        <span class="rotulo">Demonstração — avançar o tempo:</span>
+        <button class="secundario" data-dias="1">+1 dia</button>
+        <button class="secundario" data-dias="7">+7 dias</button>
+        <button class="secundario" data-dias="14">+14 dias</button>
+        ${a.dias_extra ? `<span class="rotulo">já avançado
+          ${n1(a.dias_extra)} dia(s)</span>` : ""}
+      </div>
       ${critico ? `<div class="aviso erro">
         Hematócrito abaixo do crítico de ${n3(a.hct_limiar)} para
         ${n2(a.peso)} kg — transfusão indicada.
@@ -628,6 +690,8 @@ function desenhar(d) {
     b.onclick = () => coletar(b.dataset.exame);
   const bt = $("#btn-transfundir");
   if (bt) bt.onclick = ev => { ev.preventDefault(); oferecerTransfusao(false); };
+  for (const b of document.querySelectorAll(".tempo button"))
+    b.onclick = () => avancar(Number(b.dataset.dias));
 
   // Abaixo do crítico, oferece a transfusão sozinho -- uma vez por paciente
   // por visita, para não reaparecer a cada coleta que o médico registre.

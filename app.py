@@ -46,6 +46,7 @@ MAX_CORPO = 64 * 1024          # nenhum pedido legitimo chega perto disso
 ROTA_PACIENTE = re.compile(r"^/api/pacientes/(\d+)$")
 ROTA_COLETAS = re.compile(r"^/api/pacientes/(\d+)/coletas$")
 ROTA_TRANSF = re.compile(r"^/api/pacientes/(\d+)/transfusoes$")
+ROTA_AVANCAR = re.compile(r"^/api/pacientes/(\d+)/avancar$")
 
 # Logotipo do grupo. Se o arquivo nao existir, a pagina cai no desenho SVG
 # embutido -- entao o site nunca aparece sem marca.
@@ -172,6 +173,26 @@ class Handler(BaseHTTPRequestHandler):
                 return self._responder(201, clinico.registrar_transfusao(
                     int(m.group(1)), usuario))
 
+            m = ROTA_AVANCAR.match(self.path)
+            if m:
+                self._usuario()
+                return self._responder(200, clinico.avancar_tempo(
+                    int(m.group(1)), corpo.get("dias")))
+
+            self._responder(404, dict(erro="Rota não encontrada."))
+        except clinico.ErroClinico as e:
+            self._responder(e.status, dict(erro=e.mensagem))
+        except Exception as e:
+            self._responder(500, dict(erro=f"Erro interno: {e}"))
+
+
+    def do_DELETE(self):
+        try:
+            m = ROTA_PACIENTE.match(self.path)
+            if m:
+                self._usuario()
+                return self._responder(200, clinico.apagar_paciente(
+                    int(m.group(1))))
             self._responder(404, dict(erro="Rota não encontrada."))
         except clinico.ErroClinico as e:
             self._responder(e.status, dict(erro=e.mensagem))

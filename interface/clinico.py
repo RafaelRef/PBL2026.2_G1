@@ -213,6 +213,21 @@ def registrar_transfusao(pid, usuario):
     return detalhar(pid)
 
 
+def avancar_tempo(pid, dias):
+    """Pula `dias` na linha do tempo do paciente. So para demonstracao."""
+    dias = _num(dias, "Dias", 0.25, 60)
+    _buscar(pid)                      # 404 se nao existir
+    DADOS.avancar_dias(pid, dias)
+    return detalhar(pid)
+
+
+def apagar_paciente(pid):
+    """Remove o paciente e, junto, suas coletas e transfusoes."""
+    _buscar(pid)
+    DADOS.apagar_paciente(pid)
+    return dict(ok=True, id=pid)
+
+
 def detalhar(pid):
     pac = _buscar(pid)
     return dict(paciente=dict(id=pac["id"], nome=pac["nome"],
@@ -229,10 +244,17 @@ def detalhar(pid):
 # ------------------------------------------------------------- avaliacao
 
 def _idade(pac):
-    """(hora de vida agora, peso estimado ao nascer)."""
+    """(hora de vida agora, peso estimado ao nascer).
+
+    `dias_extra` e' o avanco manual do tempo. Serve para a apresentacao:
+    numa UTI de verdade quem anda e' o calendario, mas numa demonstracao de
+    dez minutos ninguem espera duas semanas para ver o Hct cair.
+    """
     nasceu_ha = pac["semana_vida"] * 7.0                      # dias no cadastro
     desde = (_agora() - datetime.fromisoformat(pac["cadastrado_em"]))
-    hora_vida = round((nasceu_ha + desde.total_seconds() / 86400.0) * 24.0)
+    dias = (nasceu_ha + desde.total_seconds() / 86400.0
+            + (pac.get("dias_extra") or 0.0))
+    hora_vida = round(dias * 24.0)
     # inverte peso_no_dia: peso(d) = peso0 . exp(GANHO_PESO/1000 . d)
     peso0 = pac["peso"] / math.exp(P.GANHO_PESO / 1000.0 * nasceu_ha)
     return max(0, int(hora_vida)), peso0
@@ -298,6 +320,7 @@ def avaliar(pac):
         hora_vida=hora_vida,
         dia_vida=hora_vida / 24.0,
         semana_vida=hora_vida / 168.0,
+        dias_extra=float(pac.get("dias_extra") or 0.0),
         peso=e["peso"], peso_nascimento=peso0,
         V=e["V"], V_ref=e["V_ref"], M=e["M"], Hct=e["Hct"],
         hct_limiar=hct_crit,

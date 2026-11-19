@@ -123,6 +123,23 @@ def inserir(tabela, linha):
     return r[0] if r else {}
 
 
+def atualizar(tabela, params, dados):
+    """PATCH nas linhas que casam com `params`."""
+    return pedir("PATCH", tabela, corpo=dados, params=params,
+                 prefer="return=representation")
+
+
+def apagar(tabela, params):
+    """DELETE nas linhas que casam com `params`.
+
+    O PostgREST recusa um DELETE sem filtro de proposito -- nao da' para
+    apagar a tabela inteira por acidente.
+    """
+    if not params:
+        raise ErroSupabase("DELETE sem filtro seria apagar tudo.")
+    return pedir("DELETE", tabela, params=params)
+
+
 def testar():
     """Checagem de fumaca: as tabelas existem e respondem?"""
     faltando = []

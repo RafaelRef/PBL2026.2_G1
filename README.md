@@ -151,6 +151,17 @@ Fluxo: **login do médico → cadastro do paciente → lista → coletas**.
    `transfundir=False` e recebe em `agenda_transfusoes` só o que o médico
    aceitou. A regra automática continua existindo para os arquivos numerados.
 
+### Dois botões que não existiriam num sistema real
+
+- **Avançar o tempo** (`+1 / +7 / +14 dias`), na tela do paciente. Numa UTI
+  quem anda é o calendário; isto existe porque numa apresentação de dez
+  minutos ninguém espera duas semanas para ver o hematócrito cair. O valor
+  fica em `pacientes.dias_extra` e é somado à idade real em
+  `clinico._idade`. A tela mostra quantos dias já foram avançados.
+- **Apagar paciente** (o `×` na lista), com confirmação. As coletas e
+  transfusões somem junto — as chaves estrangeiras do `esquema.sql` têm
+  `ON DELETE CASCADE`.
+
 Dois gráficos acompanham o bebê desde o nascimento: o **hematócrito** contra a
 curva do limiar crítico (faixa rosa = zona de transfusão) e o **volume
 sanguíneo**, com `V_ref` subindo pelo crescimento e `V` caindo a cada punção e
@@ -208,8 +219,9 @@ decide sozinho:
 | com as chaves definidas | Postgres do Supabase (ver `interface/esquema.sql`) |
 
 São quatro tabelas: `usuarios`, `pacientes`, `coletas` e `transfusoes`. O
-`esquema.sql` é idempotente (`if not exists`), então **rode-o de novo sempre
-que ele mudar** — ele também traz as migrações de colunas novas.
+arquivo é **idempotente** (`if not exists` em tudo), então rode-o de novo
+sempre que ele mudar — ele também carrega as migrações de colunas novas
+(`coletas.forcada`, `pacientes.dias_extra`). Rodar duas vezes não quebra nada.
 
 Assim o projeto roda offline (apresentação sem internet) e hospedado, sem
 trocar uma linha de `clinico.py`.
